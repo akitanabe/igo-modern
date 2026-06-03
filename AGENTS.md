@@ -60,10 +60,10 @@ configuration values when it keeps the class concise and readable.
 Before committing, run these commands as the normal verification loop:
 
 ```bash
-composer format
-composer lint
 composer test
 composer analyze
+composer lint
+composer format
 ```
 
 Run `composer dump-autoload` after changing Composer autoload configuration.
