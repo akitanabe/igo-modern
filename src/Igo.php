@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace IgoModern;
 
+use IgoModern\Analysis\Tagger;
+
 /**
  * 利用者向けの公開 API として Tagger を保持し、形態素解析と分かち書きを提供する。
  */
