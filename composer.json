@@ -20,6 +20,9 @@
         ]
     },
     "scripts": {
-        "test": "phpunit"
+        "test": "phpunit",
+        "format": "mago format",
+        "lint": "mago lint --fix",
+        "analyze": "phpstan analyse"
     }
 }

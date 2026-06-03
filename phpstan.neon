@@ -1,0 +1,10 @@
+parameters:
+    level: 0
+    paths:
+        - tests
+        - src
+    excludePaths:
+        analyse:
+            - lib
+    bootstrapFiles:
+        - vendor/autoload.php
