@@ -1,0 +1,20 @@
+{
+  "name": "igo-php8",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "containerEnv": {
+    "IGO_OUTPUT_ENCODING": "UTF-8"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "DEVSENSE.phptools-vscode",
+        "DEVSENSE.profiler-php-vscode"
+      ]
+    }
+  },
+  "remoteUser": "vscode"
+}
