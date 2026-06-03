@@ -8,3 +8,5 @@ parameters:
             - lib
     bootstrapFiles:
         - vendor/autoload.php
+    parallel:
+        maximumNumberOfProcesses: 1
