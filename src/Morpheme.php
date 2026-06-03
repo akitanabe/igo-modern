@@ -19,6 +19,5 @@ class Morpheme
         public string $feature,
         /** 入力テキスト内で形態素が始まる位置を保持する。 */
         public int $start,
-    ) {
-    }
+    ) {}
 }
