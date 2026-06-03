@@ -35,10 +35,10 @@ src/Morpheme.php
 src/ViterbiNode.php
 ```
 
-初期 namespace はシンプルに次の形とします。
+初期 namespace は、非公式の近代化版であることを示すために次の形とします。
 
 ```php
-namespace Igo;
+namespace IgoModern;
 ```
 
 辞書処理やバイナリ IO など、責務の境界が明確になった場合はサブ namespace の導入を検討します。
@@ -66,19 +66,19 @@ namespace Igo;
 {
     "autoload": {
         "psr-4": {
-            "Igo\\": "src/"
+            "IgoModern\\": "src/"
         }
     }
 }
 ```
 
-現在の `classmap` 設定は移行期間中の暫定構成です。新実装が `lib/` に依存しなくなった時点で削除します。
+移行期間中は `src/` の PSR-4 autoload と、参照実装を読むための `lib/` classmap を併用します。新実装が `lib/` に依存しなくなった時点で classmap を削除します。
 
 ## 互換性方針
 
 古い公開 API は互換性維持の対象にしません。
 
-`new Igo()` や `new Morpheme()` のような旧来のグローバルクラス利用を維持するためだけの互換ラッパーは作成しません。新しいコードでは `Igo\Igo` や `Igo\Morpheme` のような namespaced class を使用します。
+`new Igo()` や `new Morpheme()` のような旧来のグローバルクラス利用を維持するためだけの互換ラッパーは作成しません。新しいコードでは `IgoModern\Igo` や `IgoModern\Morpheme` のような namespaced class を使用します。
 
 ## 移行順序
 

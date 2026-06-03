@@ -1,5 +1,5 @@
 {
-    "name": "igo/igo-php8",
+    "name": "akitanabe/igo-modern",
     "description": "PHP implementation of the Igo morphological analyzer.",
     "license": "MIT",
     "require": {
@@ -10,6 +10,9 @@
         "phpstan/phpstan": "^2.2"
     },
     "autoload": {
+        "psr-4": {
+            "IgoModern\\": "src/"
+        },
         "classmap": [
             "lib/"
         ]

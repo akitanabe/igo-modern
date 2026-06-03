@@ -1,5 +1,5 @@
 {
-  "name": "igo-php8",
+  "name": "igo-modern",
   "build": {
     "dockerfile": "Dockerfile",
     "context": "."
