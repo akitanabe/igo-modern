@@ -1,23 +1,33 @@
-## generic files to ignore
-*~
-*.lock
-!composer.lock
-*.DS_Store
-*.swp
-*.out
-
-# Java classfiles
-*.class
-
-# Maven target dir
-/doc
-/target
-
-# /.settings/
-/.settings/org.maven.ide.eclipse.prefs
-
-.svn*
-*/.svn/*
-# PHP dependencies and test runtime cache
+# Composer
 /vendor/
-.phpunit.result.cache
+
+# PHPUnit and coverage output
+/.phpunit.cache/
+/.phpunit.result.cache
+/coverage/
+/build/
+
+# Local environment files
+/.env
+/.env.*
+!/.env.example
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.out
+*~
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Editor and IDE metadata
+/.idea/
+/.vscode/
+/.project
+/.buildpath
+/.settings/
+*.swp
+*.swo
