@@ -1,6 +1,7 @@
 ## generic files to ignore
 *~
 *.lock
+!composer.lock
 *.DS_Store
 *.swp
 *.out
@@ -17,3 +18,6 @@
 
 .svn*
 */.svn/*
+# PHP dependencies and test runtime cache
+/vendor/
+.phpunit.result.cache

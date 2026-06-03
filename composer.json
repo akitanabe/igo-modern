@@ -1,0 +1,24 @@
+{
+    "name": "igo/igo-php8",
+    "description": "PHP implementation of the Igo morphological analyzer.",
+    "license": "MIT",
+    "require": {
+        "php": "^8.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.6"
+    },
+    "autoload": {
+        "classmap": [
+            "lib/"
+        ]
+    },
+    "autoload-dev": {
+        "classmap": [
+            "tests/"
+        ]
+    },
+    "scripts": {
+        "test": "phpunit"
+    }
+}
