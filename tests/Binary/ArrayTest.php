@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-use IgoModern\Binary\CharArrayReader;
 use IgoModern\Binary\CharDynamicArray;
 use IgoModern\Binary\CharMemoryArray;
-use IgoModern\Binary\IntArrayReader;
+use IgoModern\Binary\Contract\CharArrayReader;
+use IgoModern\Binary\Contract\IntArrayReader;
+use IgoModern\Binary\Contract\ShortArrayReader;
 use IgoModern\Binary\IntDynamicArray;
 use IgoModern\Binary\IntMemoryArray;
-use IgoModern\Binary\ShortArrayReader;
 use IgoModern\Binary\ShortDynamicArray;
 use IgoModern\Binary\ShortMemoryArray;
 use PHPUnit\Framework\TestCase;

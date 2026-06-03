@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace IgoModern\Binary;
 
+use IgoModern\Binary\Contract\ShortArray;
+
 /**
  * signed short 値の配列を必要な添字だけファイルから読み込んで返す。
  */

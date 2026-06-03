@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace IgoModern\Binary;
+namespace IgoModern\Binary\Contract;
 
 /**
  * CharMemoryArray が必要な件数の unsigned short 値を読み込む入力元を表す。

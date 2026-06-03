@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace IgoModern\Dictionary;
 
+use IgoModern\Binary\Contract\IntArray;
 use IgoModern\Binary\FileMappedInputStream;
-use IgoModern\Binary\IntArray;
 
 /**
  * 文字コードから未知語カテゴリを引き、同じ未知語として連結できる文字種か判定する。

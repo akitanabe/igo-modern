@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace IgoModern\Binary;
+namespace IgoModern\Binary\Contract;
 
 /**
  * signed short 値の配列をメモリまたはファイルから添字指定で読む境界を表す。

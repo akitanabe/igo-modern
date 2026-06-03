@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace IgoModern\Dictionary;
 
+use IgoModern\Binary\Contract\ShortArray;
 use IgoModern\Binary\FileMappedInputStream;
-use IgoModern\Binary\ShortArray;
 
 /**
  * 形態素同士の連接コストを matrix.bin から読み込み、左・右 ID の組で参照する。

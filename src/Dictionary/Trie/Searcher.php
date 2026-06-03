@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace IgoModern\Dictionary\Trie;
 
-use IgoModern\Binary\CharArray;
+use IgoModern\Binary\Contract\CharArray;
+use IgoModern\Binary\Contract\IntArray;
+use IgoModern\Binary\Contract\ShortArray;
 use IgoModern\Binary\FileMappedInputStream;
-use IgoModern\Binary\IntArray;
-use IgoModern\Binary\ShortArray;
 use RuntimeException;
 
 /**

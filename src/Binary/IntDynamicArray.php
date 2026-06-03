@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IgoModern\Binary;
 
+use IgoModern\Binary\Contract\IntArray;
 use RuntimeException;
 
 /**

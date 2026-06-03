@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace IgoModern\Binary;
 
+use IgoModern\Binary\Contract\IntArray;
+use IgoModern\Binary\Contract\IntArrayReader;
+
 /**
  * int 値の配列を reader から一括で読み込み、メモリ上から返す。
  */

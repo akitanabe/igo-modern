@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace IgoModern\Binary;
 
+use IgoModern\Binary\Contract\CharArray;
+use IgoModern\Binary\Contract\CharArrayReader;
+use IgoModern\Binary\Contract\IntArray;
+use IgoModern\Binary\Contract\IntArrayReader;
+use IgoModern\Binary\Contract\ShortArray;
+use IgoModern\Binary\Contract\ShortArrayReader;
 use RuntimeException;
 
 /**

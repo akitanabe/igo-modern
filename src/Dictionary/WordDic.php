@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace IgoModern\Dictionary;
 
 use IgoModern\Analysis\ViterbiNode;
+use IgoModern\Binary\Contract\IntArray;
+use IgoModern\Binary\Contract\ShortArray;
 use IgoModern\Binary\FileMappedInputStream;
-use IgoModern\Binary\IntArray;
-use IgoModern\Binary\ShortArray;
 use IgoModern\Dictionary\Trie\CommonPrefixCallback;
 use IgoModern\Dictionary\Trie\Searcher;
 

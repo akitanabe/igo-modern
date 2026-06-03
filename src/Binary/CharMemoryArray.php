@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace IgoModern\Binary;
 
+use IgoModern\Binary\Contract\CharArray;
+use IgoModern\Binary\Contract\CharArrayReader;
+
 /**
  * unsigned short の文字コード配列を reader から一括で読み込み、メモリ上から返す。
  */
