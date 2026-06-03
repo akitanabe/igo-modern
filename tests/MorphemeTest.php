@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use IgoModern\Morpheme;
 use PHPUnit\Framework\TestCase;
 
 /**
