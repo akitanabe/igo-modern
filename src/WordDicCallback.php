@@ -1,0 +1,16 @@
+<?php
+
+declare(strict_types=1);
+
+namespace IgoModern;
+
+/**
+ * WordDic が復元した単語候補ノードを受け取る境界を表す。
+ */
+interface WordDicCallback
+{
+    /**
+     * 辞書検索で見つかった ViterbiNode を受け取る。
+     */
+    public function call(ViterbiNode $node): void;
+}
