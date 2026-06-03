@@ -1,0 +1,171 @@
+<?php
+
+declare(strict_types=1);
+
+use IgoModern\CharDynamicArray;
+use IgoModern\CharMemoryArray;
+use IgoModern\FileMappedInputStream;
+use IgoModern\IntDynamicArray;
+use IgoModern\IntMemoryArray;
+use IgoModern\ShortDynamicArray;
+use IgoModern\ShortMemoryArray;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * 辞書バイナリを順次読み込む FileMappedInputStream の挙動を検証するテスト。
+ */
+class FileMappedInputStreamTest extends TestCase
+{
+    /** @var list<string> テスト中に作成した一時ファイルの削除対象を保持する。 */
+    private array $temporaryFiles = [];
+
+    /**
+     * テストで作成したバイナリファイルを削除してファイルシステム状態を戻す。
+     */
+    protected function tearDown(): void
+    {
+        foreach ($this->temporaryFiles as $fileName) {
+            if (is_file($fileName)) {
+                unlink($fileName);
+            }
+        }
+    }
+
+    /**
+     * getInt と getIntArray が signed int を現在位置から順に読むことを確認する。
+     */
+    public function testReadsIntValuesSequentially(): void
+    {
+        $stream = new FileMappedInputStream($this->createBinaryFile($this->packValues('l', [10, -20, 30])));
+
+        $this->assertSame(10, $stream->getInt());
+        $this->assertSame([-20, 30], $stream->getIntArray(2));
+        $this->assertTrue($stream->close());
+    }
+
+    /**
+     * getShortArray と getCharArray が signed/unsigned short を区別して読むことを確認する。
+     */
+    public function testReadsShortAndCharValuesSequentially(): void
+    {
+        $stream = new FileMappedInputStream($this->createBinaryFile(
+            $this->packValues('s', [-1, 200]) . $this->packValues('S', [65, 65_535]),
+        ));
+
+        $this->assertSame([-1, 200], $stream->getShortArray(2));
+        $this->assertSame([65, 65_535], $stream->getCharArray(2));
+        $this->assertTrue($stream->close());
+    }
+
+    /**
+     * getString が旧実装と同じくバイト数ではなく文字数に 2 を掛けた長さを読むことを確認する。
+     */
+    public function testGetStringReadsTwoBytesPerCountWithoutAdvancingNumericCursor(): void
+    {
+        $stream = new FileMappedInputStream($this->createBinaryFile('abcd' . $this->packValues('l', [99])));
+
+        $this->assertSame('abcd', $stream->getString(2));
+        $this->assertSame(99, $stream->getInt());
+        $this->assertTrue($stream->close());
+    }
+
+    /**
+     * reduce 無効時は配列インスタンスがストリームから値を読み込んで保持することを確認する。
+     */
+    public function testArrayInstancesReadIntoMemoryWhenReduceIsDisabled(): void
+    {
+        $stream = new FileMappedInputStream(
+            $this->createBinaryFile(
+                $this->packValues('l', [10, -20]) . $this->packValues('s', [30, -40])
+                    . $this->packValues('S', [50, 60]),
+            ),
+            false,
+        );
+
+        $ints = $stream->getIntArrayInstance(2);
+        $shorts = $stream->getShortArrayInstance(2);
+        $chars = $stream->getCharArrayInstance(2);
+
+        $this->assertInstanceOf(IntMemoryArray::class, $ints);
+        $this->assertSame(-20, $ints->get(1));
+        $this->assertInstanceOf(ShortMemoryArray::class, $shorts);
+        $this->assertSame(-40, $shorts->get(1));
+        $this->assertInstanceOf(CharMemoryArray::class, $chars);
+        $this->assertSame(60, $chars->get(1));
+        $this->assertTrue($stream->close());
+    }
+
+    /**
+     * reduce 有効時は配列インスタンスが開始オフセットを使って必要な値だけ読むことを確認する。
+     */
+    public function testArrayInstancesReadDynamicallyWhenReduceIsEnabled(): void
+    {
+        $fileName = $this->createBinaryFile(
+            $this->packValues('l', [10, -20]) . $this->packValues('s', [30, -40]) . $this->packValues('S', [50, 60]),
+        );
+        $stream = new FileMappedInputStream($fileName, true);
+
+        $ints = $stream->getIntArrayInstance(2);
+        $shorts = $stream->getShortArrayInstance(2);
+        $chars = $stream->getCharArrayInstance(2);
+
+        $this->assertInstanceOf(IntDynamicArray::class, $ints);
+        $this->assertSame(-20, $ints->get(1));
+        $this->assertInstanceOf(ShortDynamicArray::class, $shorts);
+        $this->assertSame(-40, $shorts->get(1));
+        $this->assertInstanceOf(CharDynamicArray::class, $chars);
+        $this->assertSame(60, $chars->get(1));
+        $this->assertTrue($stream->close());
+    }
+
+    /**
+     * static helper がファイル全体を int 配列として読み切ることを確認する。
+     */
+    public function testGetIntArrayFromFileReadsWholeFile(): void
+    {
+        $fileName = $this->createBinaryFile($this->packValues('l', [7, -8, 9]));
+
+        $this->assertSame([7, -8, 9], FileMappedInputStream::getIntArrayFromFile($fileName));
+    }
+
+    /**
+     * static helper がファイル全体を UTF-16 相当のバイト列として読み切ることを確認する。
+     */
+    public function testGetStringFromFileReadsWholeFileAsTwoByteUnits(): void
+    {
+        $fileName = $this->createBinaryFile('abcdef');
+
+        $this->assertSame('abcdef', FileMappedInputStream::getStringFromFile($fileName));
+    }
+
+    /**
+     * 読み取り元にする一時バイナリファイルを作成する。
+     */
+    private function createBinaryFile(string $contents): string
+    {
+        $fileName = tempnam(sys_get_temp_dir(), 'igo-fmis-');
+        $this->assertIsString($fileName);
+        $this->temporaryFiles[] = $fileName;
+
+        $writtenBytes = file_put_contents($fileName, $contents);
+        $this->assertSame(strlen($contents), $writtenBytes);
+
+        return $fileName;
+    }
+
+    /**
+     * 旧実装と同じ pack 形式で数値列をバイナリ文字列へ変換する。
+     *
+     * @param list<int> $values
+     */
+    private function packValues(string $format, array $values): string
+    {
+        $binary = '';
+
+        foreach ($values as $value) {
+            $binary .= pack($format, $value);
+        }
+
+        return $binary;
+    }
+}
