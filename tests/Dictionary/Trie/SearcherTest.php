@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace IgoModern\Tests\Dictionary\Trie;
+
 use IgoModern\Dictionary\Trie\CommonPrefixCallback;
 use IgoModern\Dictionary\Trie\Searcher;
 use PHPUnit\Framework\TestCase;

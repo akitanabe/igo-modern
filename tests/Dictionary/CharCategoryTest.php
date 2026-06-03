@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace IgoModern\Tests\Dictionary;
+
 use IgoModern\Dictionary\Category;
 use IgoModern\Dictionary\CharCategory;
 use PHPUnit\Framework\TestCase;

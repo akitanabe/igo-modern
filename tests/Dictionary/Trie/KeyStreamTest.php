@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace IgoModern\Tests\Dictionary\Trie;
+
 use IgoModern\Dictionary\Trie\KeyStream;
 use PHPUnit\Framework\TestCase;
 

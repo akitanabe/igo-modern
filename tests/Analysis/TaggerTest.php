@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace IgoModern\Tests\Analysis;
+
 use IgoModern\Analysis\Tagger;
 use IgoModern\Morpheme;
 use PHPUnit\Framework\TestCase;

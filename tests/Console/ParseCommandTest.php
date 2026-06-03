@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace IgoModern\Tests\Console;
+
 use IgoModern\Console\ParseCommand;
 use IgoModern\Morpheme;
 use IgoModern\Parser;

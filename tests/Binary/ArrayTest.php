@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace IgoModern\Tests\Binary;
+
 use IgoModern\Binary\CharDynamicArray;
 use IgoModern\Binary\CharMemoryArray;
 use IgoModern\Binary\Contract\CharArrayReader;

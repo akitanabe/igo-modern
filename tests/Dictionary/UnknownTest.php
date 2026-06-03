@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace IgoModern\Tests\Dictionary;
+
 use IgoModern\Analysis\ViterbiNode;
 use IgoModern\Dictionary\Unknown;
 use IgoModern\Dictionary\WordDic;

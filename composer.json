@@ -18,6 +18,11 @@
             "IgoModern\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "IgoModern\\Tests\\": "tests/"
+        }
+    },
     "scripts": {
         "test": "phpunit",
         "format": "mago format",

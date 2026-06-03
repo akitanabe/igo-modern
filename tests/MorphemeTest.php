@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace IgoModern\Tests;
+
 use IgoModern\Morpheme;
 use PHPUnit\Framework\TestCase;
 

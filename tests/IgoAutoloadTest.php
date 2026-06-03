@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace IgoModern\Tests;
+
 use IgoModern\Analysis\Tagger;
 use IgoModern\Binary\FileMappedInputStream;
 use IgoModern\Dictionary\Trie\Searcher;
