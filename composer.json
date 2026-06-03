@@ -16,15 +16,7 @@
     "autoload": {
         "psr-4": {
             "IgoModern\\": "src/"
-        },
-        "classmap": [
-            "lib/"
-        ]
-    },
-    "autoload-dev": {
-        "classmap": [
-            "tests/"
-        ]
+        }
     },
     "scripts": {
         "test": "phpunit",
