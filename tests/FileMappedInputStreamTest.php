@@ -25,9 +25,11 @@ class FileMappedInputStreamTest extends TestCase
     protected function tearDown(): void
     {
         foreach ($this->temporaryFiles as $fileName) {
-            if (is_file($fileName)) {
-                unlink($fileName);
+            if (!is_file($fileName)) {
+                continue;
             }
+
+            unlink($fileName);
         }
     }
 

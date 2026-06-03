@@ -27,9 +27,11 @@ class ArrayTest extends TestCase
     protected function tearDown(): void
     {
         foreach ($this->temporaryFiles as $fileName) {
-            if (is_file($fileName)) {
-                unlink($fileName);
+            if (!is_file($fileName)) {
+                continue;
             }
+
+            unlink($fileName);
         }
     }
 
@@ -88,11 +90,11 @@ class ArrayTest extends TestCase
      */
     public function testCharMemoryArrayReturnsValuesLoadedFromReader(): void
     {
-        $array = new CharMemoryArray($this->createCharReader([65, 40000, 65535]), 3);
+        $array = new CharMemoryArray($this->createCharReader([65, 40_000, 65_535]), 3);
 
         $this->assertSame(65, $array->get(0));
-        $this->assertSame(40000, $array->get(1));
-        $this->assertSame(65535, $array->get(2));
+        $this->assertSame(40_000, $array->get(1));
+        $this->assertSame(65_535, $array->get(2));
     }
 
     /**
@@ -100,12 +102,12 @@ class ArrayTest extends TestCase
      */
     public function testCharDynamicArrayReturnsValuesLoadedFromFileOffset(): void
     {
-        $fileName = $this->createBinaryFile('x' . $this->packValues('S', [65, 40000, 65535]));
+        $fileName = $this->createBinaryFile('x' . $this->packValues('S', [65, 40_000, 65_535]));
         $array = new CharDynamicArray($fileName, 1);
 
         $this->assertSame(65, $array->get(0));
-        $this->assertSame(40000, $array->get(1));
-        $this->assertSame(65535, $array->get(2));
+        $this->assertSame(40_000, $array->get(1));
+        $this->assertSame(65_535, $array->get(2));
     }
 
     /**
