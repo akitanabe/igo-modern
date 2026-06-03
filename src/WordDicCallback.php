@@ -13,4 +13,9 @@ interface WordDicCallback
      * 辞書検索で見つかった ViterbiNode を受け取る。
      */
     public function call(ViterbiNode $node): void;
+
+    /**
+     * 現在の開始位置で候補がまだ通知されていないかを返す。
+     */
+    public function isEmpty(): bool;
 }

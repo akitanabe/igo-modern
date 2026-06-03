@@ -195,6 +195,14 @@ class CapturingWordDicCallback implements WordDicCallback
     }
 
     /**
+     * WordDic 単体テストでは候補通知の有無をそのまま空状態として返す。
+     */
+    public function isEmpty(): bool
+    {
+        return $this->nodes === [];
+    }
+
+    /**
      * 候補ノードの主要属性をテスト比較用の配列へ変換する。
      *
      * @return list<array{int, int, int, int, int, int, bool}>
