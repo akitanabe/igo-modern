@@ -1,24 +1,26 @@
-# 開発方針
+# 移行方針
 
-## 目的
+> この移行計画は完了済みです。移行順序に記載した対象はすべて `src/` 配下へ移行されています。
 
-このプロジェクトの目的は、古い Igo PHP ライブラリを PHP 8 以降の環境に適応させることです。
+## 移行目的
 
-古いグローバルクラス API との互換性は維持対象にしません。`lib/` 配下の旧実装は挙動を把握するための参照実装として扱い、モダンな実装は `src/` 配下に新しく作成します。
+このプロジェクトの目的は、古い Igo PHP ライブラリを PHP 8 以降の環境へ段階的に移行することです。
 
-## 主な目標
+古いグローバルクラス API との互換性は維持対象にしません。`lib/` 配下の旧実装は移行元の参照実装として扱い、PHP 8 向けの移行先実装は `src/` 配下に新しく作成します。
+
+## 移行目標
 
 1. PHP の型を明記する。
 2. namespace を適用し、PSR-4 autoload に対応する。
 3. 実装を差し替える前に、期待する挙動を PHPUnit テストで固定する。
 
-## ディレクトリ方針
+## 移行先ディレクトリ
 
 ### `lib/`
 
 `lib/` には旧実装を残します。
 
-モダン化作業では `lib/` を修正しません。旧実装の挙動を理解し、characterization test によって仕様として記録するために使用します。
+移行作業では `lib/` を修正しません。旧実装の挙動を理解し、characterization test によって移行対象の仕様として記録するために使用します。
 
 ### `src/`
 
@@ -43,9 +45,9 @@ namespace IgoModern;
 
 辞書処理やバイナリ IO など、責務の境界が明確になった場合はサブ namespace の導入を検討します。
 
-## テスト戦略
+## 移行テスト戦略
 
-モダン化は、旧実装のテストを書いてから新実装へ差し替える流れで進めます。
+移行は、旧実装の挙動をテストで固定してから新実装へ差し替える流れで進めます。
 
 1. `lib/` のクラスに対して characterization test を書く。
 2. 旧実装に対してそのテストが通ることを確認する。
@@ -53,12 +55,12 @@ namespace IgoModern;
 4. テスト対象を namespaced な `src/` のクラスへ向ける。
 5. 新実装が同じ挙動を満たすことを確認する。
 
-これは通常の TDD をこの移植作業向けに調整した進め方です。
+これは通常の TDD をこの移行作業向けに調整した進め方です。
 
 - 旧実装の挙動を記録する characterization test では、追加直後から Green になる場合があります。
 - 新しい挙動や構造を追加する場合は、Red、Green、Refactor の流れに従います。
 
-## Composer Autoload 方針
+## Composer Autoload 移行方針
 
 最終的な autoload 設定は PSR-4 を目標にします。
 
@@ -74,7 +76,7 @@ namespace IgoModern;
 
 移行期間中は `src/` の PSR-4 autoload と、参照実装を読むための `lib/` classmap を併用します。新実装が `lib/` に依存しなくなった時点で classmap を削除します。
 
-## 互換性方針
+## 互換性の扱い
 
 古い公開 API は互換性維持の対象にしません。
 
@@ -84,22 +86,22 @@ namespace IgoModern;
 
 依存関係の少ないクラスから移行します。
 
-1. `Morpheme`
-2. `ViterbiNode`
-3. `IntArray`, `ShortArray`, `CharArray`
-4. `KeyStream`
-5. `Searcher`
-6. `FileMappedInputStream`
-7. `Matrix`
-8. `CharCategory`
-9. `WordDic`
-10. `Unknown`
-11. `Tagger`
-12. `Igo`
+1. [x] `Morpheme`
+2. [x] `ViterbiNode`
+3. [x] `IntArray`, `ShortArray`, `CharArray`
+4. [x] `KeyStream`
+5. [x] `Searcher`
+6. [x] `FileMappedInputStream`
+7. [x] `Matrix`
+8. [x] `CharCategory`
+9. [x] `WordDic`
+10. [x] `Unknown`
+11. [x] `Tagger`
+12. [x] `Igo`
 
-`Tagger` と `Igo` は依存するクラスが多いため、後半で移行します。
+上記の移行対象はすべて `src/` 配下へ移行済みです。`Tagger` と `Igo` は依存するクラスが多いため後半で移行し、現在は `IgoModern\Igo` を公開ファサード、`IgoModern\Tagger` を解析処理の実体として分離しています。
 
-## コードスタイル方針
+## 移行後コードスタイル
 
 新規作成または変更するすべてのテスト、関数、クラスメソッドには、その処理の目的を説明する簡潔なコメントを付けます。
 

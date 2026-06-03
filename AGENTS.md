@@ -70,5 +70,5 @@ Run `composer dump-autoload` after changing Composer autoload configuration.
 
 ## Reference
 
-See `docs/development-policy.md` for the detailed migration policy and suggested
+See `docs/migration-policy.md` for the detailed migration policy and suggested
 class migration order.
