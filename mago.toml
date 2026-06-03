@@ -3,5 +3,4 @@ php-version = "8.0"
 
 [source]
 paths = ["tests", "src"]
-excludes = ["lib"]
 extensions = ["php"]
