@@ -12,8 +12,8 @@ use RuntimeException;
  */
 class IntDynamicArray implements IntArray
 {
-    /** @var resource バイナリ辞書を読むためのファイルハンドルを保持する。 */
-    protected $fp;
+    /** バイナリ辞書をページ単位で読み、近接アクセスの再読み込みを減らす。 */
+    protected PagedBinaryReader $reader;
 
     /**
      * バイナリ辞書内の配列開始位置を保持し、読み取り用ファイルを開く。
@@ -22,23 +22,7 @@ class IntDynamicArray implements IntArray
         protected string $fileName,
         protected int $start,
     ) {
-        $fp = fopen($this->fileName, 'rb');
-
-        if ($fp === false) {
-            throw new RuntimeException('dictionary reading failed.');
-        }
-
-        $this->fp = $fp;
-    }
-
-    /**
-     * 開いているファイルハンドルを閉じ、dynamic 読み取りのリソースを解放する。
-     */
-    public function __destruct()
-    {
-        if (is_resource($this->fp)) {
-            fclose($this->fp);
-        }
+        $this->reader = new PagedBinaryReader($this->fileName);
     }
 
     /**
@@ -56,18 +40,7 @@ class IntDynamicArray implements IntArray
      */
     protected function readValue(int $idx, int $byteWidth, string $unpackFormat): int
     {
-        $seekResult = fseek($this->fp, $this->start + ($idx * $byteWidth));
-
-        if ($seekResult !== 0) {
-            throw new RuntimeException('dictionary seeking failed.');
-        }
-
-        $bytes = fread($this->fp, $byteWidth);
-
-        if ($bytes === false || strlen($bytes) !== $byteWidth) {
-            throw new RuntimeException('dictionary reading failed.');
-        }
-
+        $bytes = $this->reader->readBytes($this->start + ($idx * $byteWidth), $byteWidth);
         $data = unpack($unpackFormat, $bytes);
 
         if ($data === false) {
