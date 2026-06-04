@@ -17,6 +17,6 @@ class CharMemoryArray extends IntMemoryArray implements CharArray
      */
     public function __construct(CharArrayReader $reader, int $count)
     {
-        $this->array = $reader->getCharArray($count);
+        $this->array = self::fixedArrayFromValues($reader->getCharArray($count));
     }
 }

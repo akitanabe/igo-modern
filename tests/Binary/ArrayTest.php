@@ -14,6 +14,8 @@ use IgoModern\Binary\IntMemoryArray;
 use IgoModern\Binary\ShortDynamicArray;
 use IgoModern\Binary\ShortMemoryArray;
 use PHPUnit\Framework\TestCase;
+use ReflectionProperty;
+use SplFixedArray;
 
 /**
  * 辞書バイナリ上の数値配列をメモリまたはファイルから読む実装を検証するテスト。
@@ -47,6 +49,18 @@ class ArrayTest extends TestCase
         $this->assertSame(5, $array->get(0));
         $this->assertSame(-7, $array->get(1));
         $this->assertSame(13, $array->get(2));
+    }
+
+    /**
+     * IntMemoryArray が固定件数の値を通常の PHP 配列ではなく SplFixedArray として保持することを確認する。
+     */
+    public function testIntMemoryArrayStoresValuesInFixedArray(): void
+    {
+        $array = new IntMemoryArray($this->createIntReader([5, -7, 13]), 3);
+        $arrayProperty = new ReflectionProperty(IntMemoryArray::class, 'array');
+        $arrayProperty->setAccessible(true);
+
+        $this->assertInstanceOf(SplFixedArray::class, $arrayProperty->getValue($array));
     }
 
     /**

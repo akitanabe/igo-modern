@@ -17,6 +17,6 @@ class ShortMemoryArray extends IntMemoryArray implements ShortArray
      */
     public function __construct(ShortArrayReader $reader, int $count)
     {
-        $this->array = $reader->getShortArray($count);
+        $this->array = self::fixedArrayFromValues($reader->getShortArray($count));
     }
 }
