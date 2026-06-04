@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IgoModern\Tests\Dictionary\Trie;
 
+use IgoModern\Binary\Contract\CharArray;
 use IgoModern\Dictionary\Trie\KeyStream;
 use PHPUnit\Framework\TestCase;
 
@@ -46,9 +47,33 @@ class KeyStreamTest extends TestCase
     public function testStartsWithComparesPrefixFromCurrentPosition(): void
     {
         $stream = new KeyStream([10, 20, 30, 40], 1);
+        $prefix = new FixedCharArray([0, 20, 30, 99]);
 
-        $this->assertTrue($stream->startsWith([0, 20, 30, 99], 1, 2));
-        $this->assertFalse($stream->startsWith([20, 99], 0, 2));
-        $this->assertFalse($stream->startsWith([20, 30, 40, 50], 0, 4));
+        $this->assertTrue($stream->startsWith($prefix, 1, 2));
+        $this->assertFalse($stream->startsWith(new FixedCharArray([20, 99]), 0, 2));
+        $this->assertFalse($stream->startsWith(new FixedCharArray([20, 30, 40, 50]), 0, 4));
+    }
+}
+
+/**
+ * KeyStream の prefix 比較に使う文字コード配列を固定値で返す。
+ */
+class FixedCharArray implements CharArray
+{
+    /**
+     * prefix として返す文字コード列を保持する。
+     *
+     * @param list<int> $values
+     */
+    public function __construct(
+        private array $values,
+    ) {}
+
+    /**
+     * 指定添字に対応する文字コードを返す。
+     */
+    public function get(int $idx): int
+    {
+        return $this->values[$idx];
     }
 }

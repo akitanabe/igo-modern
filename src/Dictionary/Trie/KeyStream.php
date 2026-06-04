@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace IgoModern\Dictionary\Trie;
 
+use IgoModern\Binary\Contract\CharArray;
+
 /**
  * Searcher が double-array trie のキーを現在位置から順に読むためのストリーム。
  */
@@ -26,17 +28,15 @@ class KeyStream
 
     /**
      * 現在位置から prefix の指定範囲が続いているかを判定する。
-     *
-     * @param list<int> $prefix
      */
-    public function startsWith(array $prefix, int $beg, int $len): bool
+    public function startsWith(CharArray $prefix, int $beg, int $len): bool
     {
         if ((count($this->s) - $this->cur) < $len) {
             return false;
         }
 
         for ($i = 0; $i < $len; $i++) {
-            if ($this->s[$this->cur + $i] !== $prefix[$beg + $i]) {
+            if ($this->s[$this->cur + $i] !== $prefix->get($beg + $i)) {
                 return false;
             }
         }

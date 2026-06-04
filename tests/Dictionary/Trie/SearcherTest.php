@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace IgoModern\Tests\Dictionary\Trie;
 
+use IgoModern\Binary\CharDynamicArray;
 use IgoModern\Dictionary\Trie\CommonPrefixCallback;
 use IgoModern\Dictionary\Trie\Searcher;
 use PHPUnit\Framework\TestCase;
+use ReflectionProperty;
 
 /**
  * Searcher が double-array trie 辞書から共通接頭辞を列挙する挙動を検証するテスト。
@@ -79,6 +81,18 @@ class SearcherTest extends TestCase
             ],
             $callback->matches,
         );
+    }
+
+    /**
+     * Searcher が tail を PHP 配列へ展開せず dynamic reader として保持することを確認する。
+     */
+    public function testTailIsReadDynamically(): void
+    {
+        $searcher = new Searcher($this->createDictionaryFile());
+        $tailProperty = new ReflectionProperty(Searcher::class, 'tail');
+        $tailProperty->setAccessible(true);
+
+        $this->assertInstanceOf(CharDynamicArray::class, $tailProperty->getValue($searcher));
     }
 
     /**

@@ -8,7 +8,6 @@ use IgoModern\Binary\Contract\CharArray;
 use IgoModern\Binary\Contract\IntArray;
 use IgoModern\Binary\Contract\ShortArray;
 use IgoModern\Binary\FileMappedInputStream;
-use RuntimeException;
 
 /**
  * double-array trie 辞書から入力キーに一致する共通接頭辞を探索する。
@@ -30,8 +29,8 @@ class Searcher
     /** tail 配列に格納された各語の suffix 長を読む。 */
     private ShortArray $lens;
 
-    /** @var list<int> tail 圧縮された suffix の文字コード列を保持する。 */
-    private array $tail;
+    /** tail 圧縮された suffix の文字コード列を必要な添字だけ読む。 */
+    private CharArray $tail;
 
     /**
      * 辞書バイナリから double-array trie と tail 情報を復元する。
@@ -50,7 +49,7 @@ class Searcher
             $this->base = $stream->getIntArrayInstance($nodeSize);
             $this->lens = $stream->getShortArrayInstance($tailIndexSize);
             $this->chck = $stream->getCharArrayInstance($nodeSize);
-            $this->tail = $this->unpackTail($stream->getString($tailSize));
+            $this->tail = $stream->getCharArrayInstance($tailSize);
         } finally {
             $stream->close();
         }
@@ -127,25 +126,5 @@ class Searcher
         if ($input->startsWith($this->tail, $this->begs->get($id), $length)) {
             $fn->call($start, $offset + $length + 1, $id);
         }
-    }
-
-    /**
-     * UTF-16 相当のバイト列から tail 用の unsigned short 文字コード列を復元する。
-     *
-     * @return list<int>
-     */
-    private function unpackTail(string $binary): array
-    {
-        if ($binary === '') {
-            return [];
-        }
-
-        $values = unpack('S*', $binary);
-
-        if ($values === false) {
-            throw new RuntimeException('dictionary unpacking failed.');
-        }
-
-        return array_values(array_map(static fn(int $value): int => $value, $values));
     }
 }
