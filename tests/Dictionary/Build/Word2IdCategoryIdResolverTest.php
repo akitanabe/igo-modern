@@ -41,7 +41,11 @@ class Word2IdCategoryIdResolverTest extends TestCase
     public function testResolveReturnsTrieIdForUnknownCategoryKey(): void
     {
         $directory = $this->createDictionaryDirectory([
+            'A' => 0,
+            'B' => 1,
+            'C' => 2,
             "\002DEFAULT" => 3,
+            'D' => 4,
             "\002SPACE" => 5,
         ]);
 
@@ -57,6 +61,9 @@ class Word2IdCategoryIdResolverTest extends TestCase
     public function testResolveFailsWhenCategoryKeyIsMissing(): void
     {
         $directory = $this->createDictionaryDirectory([
+            'A' => 0,
+            'B' => 1,
+            'C' => 2,
             "\002DEFAULT" => 3,
         ]);
 

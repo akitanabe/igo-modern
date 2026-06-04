@@ -18,6 +18,8 @@ class DoubleArrayTrieBuilder
      */
     public function build(array $keys, string $fileName): void
     {
+        $this->assertContiguousIds($keys);
+
         $root = $this->buildTrie($keys);
         $usedIndexes = [];
         $this->assignBase($root, $usedIndexes);
@@ -31,6 +33,22 @@ class DoubleArrayTrieBuilder
             array_values($chck),
             count($keys),
         ));
+    }
+
+    /**
+     * Searcher の keySetSize と一致するように、trie ID が 0 から連続していることを保証する。
+     *
+     * @param array<string, int> $keys
+     */
+    private function assertContiguousIds(array $keys): void
+    {
+        $ids = array_values($keys);
+        sort($ids);
+        $expectedIds = count($keys) === 0 ? [] : range(0, count($keys) - 1);
+
+        if ($ids !== $expectedIds) {
+            throw new RuntimeException('trie ids must be contiguous from 0.');
+        }
     }
 
     /**

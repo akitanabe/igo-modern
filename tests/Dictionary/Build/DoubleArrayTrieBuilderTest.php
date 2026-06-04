@@ -78,6 +78,17 @@ class DoubleArrayTrieBuilderTest extends TestCase
     }
 
     /**
+     * Searcher の keySetSize と一致しない飛び番 ID は、検索結果の範囲外参照を招くため拒否する。
+     */
+    public function testBuildFailsWhenTrieIdsAreNotContiguous(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('trie ids must be contiguous from 0.');
+
+        (new DoubleArrayTrieBuilder())->build(['A' => 0, 'B' => 2], $this->createTemporaryFile());
+    }
+
+    /**
      * word2id の読み取り元にする一時ファイルパスを確保する。
      */
     private function createTemporaryFile(): string
