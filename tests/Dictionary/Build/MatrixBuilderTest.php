@@ -44,10 +44,7 @@ class MatrixBuilderTest extends TestCase
     {
         $inputDirectory = $this->createTemporaryDirectory('igo-matrix-in-');
         $outputDirectory = $this->createTemporaryDirectory('igo-matrix-out-');
-        $this->writeTextFile(
-            $inputDirectory . '/matrix.def',
-            "3 2\n0 0 10\n1 0 20\n2 0 30\n0 1 -5\n1 1 -6\n" . "2 1 -7\n",
-        );
+        $this->writeTextFile($inputDirectory . '/matrix.def', "3 2\n0 0 10\n1 0 20\n2 0 30\n0 1 -5\n1 1 -6\n2 1 -7\n");
 
         (new MatrixBuilder())->build($outputDirectory, $inputDirectory, 'EUC-JP', ',');
 
