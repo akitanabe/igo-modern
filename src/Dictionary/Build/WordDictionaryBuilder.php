@@ -343,7 +343,35 @@ class WordDictionaryBuilder implements DictionaryBuildStep
      */
     private function parseSeparatedFields(string $line, string $delimiter, int $lineNumber, string $sourceName): array
     {
+        $this->assertCsvQuotesClosed($line, $sourceName, $lineNumber);
+
         return $this->trimFields(str_getcsv($line, $delimiter), $sourceName, $lineNumber);
+    }
+
+    /**
+     * CSV の引用フィールドが 1 行内で閉じていることを確認し、寛容な parser の前に壊れた行を止める。
+     */
+    private function assertCsvQuotesClosed(string $line, string $sourceName, int $lineNumber): void
+    {
+        $insideQuotedField = false;
+        $length = strlen($line);
+
+        for ($index = 0; $index < $length; $index++) {
+            if ($line[$index] !== '"') {
+                continue;
+            }
+
+            if ($insideQuotedField && ($index + 1) < $length && $line[$index + 1] === '"') {
+                $index++;
+                continue;
+            }
+
+            $insideQuotedField = !$insideQuotedField;
+        }
+
+        if ($insideQuotedField) {
+            throw new RuntimeException(sprintf('%s line %d could not be parsed.', $sourceName, $lineNumber));
+        }
     }
 
     /**

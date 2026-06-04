@@ -10,6 +10,7 @@ use IgoModern\Dictionary\Build\WordDictionaryBuilder;
 use IgoModern\Dictionary\WordDic;
 use IgoModern\Dictionary\WordDicCallback;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 /**
  * WordDictionaryBuilder が MeCab 互換定義から runtime WordDic 互換の単語辞書を生成することを検証するテスト。
@@ -107,6 +108,23 @@ class WordDictionaryBuilderTest extends TestCase
         $this->assertFileExists($outputDirectory . '/word.dat');
         $this->assertFileExists($outputDirectory . '/word.ary.idx');
         $this->assertFileExists($outputDirectory . '/word.inf');
+    }
+
+    /**
+     * 引用符が閉じていない単語 CSV 行を、黙って素性へ取り込まず parse error として扱うことを確認する。
+     */
+    public function testBuildFailsWhenCsvLineHasUnclosedQuote(): void
+    {
+        $inputDirectory = $this->createTemporaryDirectory('igo-word-in-');
+        $outputDirectory = $this->createMissingTemporaryDirectory('igo-word-out-');
+        $this->writeTextFile($inputDirectory . '/char.def', "DEFAULT 1 0 1\nSPACE 0 1 2\n0x0020 SPACE\n");
+        $this->writeTextFile($inputDirectory . '/unk.def', "DEFAULT,1,1,1,DEFAULT\nSPACE,1,1,1,SPACE\n");
+        $this->writeTextFile($inputDirectory . '/noun.csv', "猫,1,2,3,\"名詞,一般\n");
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('noun.csv line 1 could not be parsed.');
+
+        (new WordDictionaryBuilder())->build($outputDirectory, $inputDirectory, 'UTF-8', ',');
     }
 
     /**
