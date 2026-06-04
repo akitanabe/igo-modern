@@ -229,8 +229,8 @@ class CharCategoryBuilder implements DictionaryBuildStep
                 }
             }
 
-            if ($range['start'] <= 0x0020 && 0x0020 <= $range['end'] && in_array('SPACE', $range['names'], true)) {
-                $spaceAssigned = true;
+            if ($range['start'] <= 0x0020 && 0x0020 <= $range['end']) {
+                $spaceAssigned = $range['names'][0] === 'SPACE';
             }
         }
 

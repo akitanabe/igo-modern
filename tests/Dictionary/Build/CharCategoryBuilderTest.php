@@ -126,6 +126,26 @@ class CharCategoryBuilderTest extends TestCase
     }
 
     /**
+     * 0x0020 の主カテゴリが SPACE でない char.def を、互換カテゴリに SPACE が含まれていても拒否する。
+     */
+    public function testBuildFailsWhenSpaceCodeUsesSpaceOnlyAsCompatibleCategory(): void
+    {
+        $inputDirectory = $this->createTemporaryDirectory('igo-char-in-');
+        $outputDirectory = $this->createTemporaryDirectory('igo-char-out-');
+        $this->writeTextFile($inputDirectory . '/char.def', "DEFAULT 1 0 1\nSPACE 0 1 2\n0x0020 DEFAULT SPACE\n");
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('char.def must assign 0x0020 to SPACE.');
+
+        (new CharCategoryBuilder(new MappingCategoryIdResolver(['DEFAULT' => 0, 'SPACE' => 1])))->build(
+            $outputDirectory,
+            $inputDirectory,
+            'UTF-8',
+            ',',
+        );
+    }
+
+    /**
      * 指定 prefix の一時ディレクトリを作成し、後片付け対象として記録する。
      */
     private function createTemporaryDirectory(string $prefix): string
