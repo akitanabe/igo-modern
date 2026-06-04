@@ -194,6 +194,8 @@ class DoubleArrayTrieBuilder
     /**
      * 配置済み trie ノードを Searcher の base/check 配列と tail 配列へ展開する。
      *
+     * ipadic 規模の辞書では各配列が巨大になるため、再帰ごとの配列コピーを避けて同じバッファを更新する。
+     *
      * @param array<int, int> $base
      * @param array<int, int> $chck
      * @param array<int, int> $begs
