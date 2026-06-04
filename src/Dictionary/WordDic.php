@@ -18,8 +18,8 @@ class WordDic
     /** 表層形の文字コード列から trie ID を引く double-array trie を保持する。 */
     private Searcher $trie;
 
-    /** word.dat に格納された UTF-16 相当の素性バイト列全体を保持する。 */
-    private string $data;
+    /** word.dat に格納された UTF-16 相当の素性バイト列を必要範囲だけ読む。 */
+    private WordDataReader $data;
 
     /** @var list<int> trie ID から単語 ID 範囲へ変換する開始オフセット列を保持する。 */
     private array $indices;
@@ -42,7 +42,7 @@ class WordDic
     public function __construct(string $dataDir)
     {
         $this->trie = new Searcher($dataDir . '/word2id');
-        $this->data = FileMappedInputStream::getStringFromFile($dataDir . '/word.dat');
+        $this->data = new WordDataReader($dataDir . '/word.dat');
         $this->indices = FileMappedInputStream::getIntArrayFromFile($dataDir . '/word.ary.idx');
 
         $stream = new FileMappedInputStream($dataDir . '/word.inf');
@@ -84,7 +84,7 @@ class WordDic
         $start = $this->dataOffsets->get($wordId);
         $end = $this->dataOffsets->get($wordId + 1);
 
-        return substr($this->data, $start << 1, ($end - $start) << 1);
+        return $this->data->readCodeUnitSlice($start, $end);
     }
 
     /**
