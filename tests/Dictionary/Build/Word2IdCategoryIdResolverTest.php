@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IgoModern\Tests\Dictionary\Build;
 
+use IgoModern\Dictionary\Build\DoubleArrayTrieBuilder;
 use IgoModern\Dictionary\Build\Word2IdCategoryIdResolver;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -78,142 +79,8 @@ class Word2IdCategoryIdResolverTest extends TestCase
         mkdir($baseName);
         $this->temporaryDirectories[] = $baseName;
 
-        $this->writeBinaryFile($baseName . '/word2id', $this->createTrieDictionary($keys));
+        (new DoubleArrayTrieBuilder())->build($keys, $baseName . '/word2id');
 
         return $baseName;
     }
-
-    /**
-     * tail 圧縮を使わない小さな double-array trie 辞書を Searcher のバイナリ形式で作成する。
-     *
-     * @param array<string, int> $keys
-     */
-    private function createTrieDictionary(array $keys): string
-    {
-        $root = new TrieNode(1);
-        $nextBase = 1000;
-
-        foreach ($keys as $key => $id) {
-            $node = $root;
-
-            foreach ($this->utf16CodeUnits($key) as $code) {
-                if (!isset($node->children[$code])) {
-                    $node->children[$code] = new TrieNode($nextBase);
-                    $nextBase += 1000;
-                }
-
-                $node = $node->children[$code];
-            }
-
-            $node->terminalId = $id;
-        }
-
-        $nodeSize = $this->nodeSize($root);
-        $base = array_fill(0, $nodeSize, 0);
-        $chck = array_fill(0, $nodeSize, 0);
-        $base[0] = $root->base;
-        [$base, $chck] = $this->emitTrieNode($root, $base, $chck);
-
-        return (
-            $this->packValues('l', [$nodeSize, count($keys), 0])
-            . $this->packValues('l', array_fill(0, count($keys), 0))
-            . $this->packValues('l', array_values($base))
-            . $this->packValues('s', array_fill(0, count($keys), 0))
-            . $this->packValues('S', array_values($chck))
-        );
-    }
-
-    /**
-     * trie ノードと遷移が収まる double-array 配列サイズを算出する。
-     */
-    private function nodeSize(TrieNode $node): int
-    {
-        $maxIndex = $node->base;
-
-        foreach ($node->children as $code => $child) {
-            $maxIndex = max($maxIndex, $node->base + $code, $this->nodeSize($child) - 1);
-        }
-
-        return $maxIndex + 1;
-    }
-
-    /**
-     * trie ノードを base/check 配列へ展開し、終端 ID と遷移を Searcher の規則で保存する。
-     *
-     * @param array<int, int> $base
-     * @param array<int, int> $chck
-     * @return array{0:array<int, int>, 1:array<int, int>}
-     */
-    private function emitTrieNode(TrieNode $node, array $base, array $chck): array
-    {
-        if ($node->terminalId !== null) {
-            $base[$node->base] = -($node->terminalId + 1);
-        }
-
-        foreach ($node->children as $code => $child) {
-            $index = $node->base + $code;
-            $base[$index] = $child->base;
-            $chck[$index] = $code;
-            [$base, $chck] = $this->emitTrieNode($child, $base, $chck);
-        }
-
-        return [$base, $chck];
-    }
-
-    /**
-     * UTF-8 文字列を Searcher と同じ UTF-16LE code unit 配列へ変換する。
-     *
-     * @return list<int>
-     */
-    private function utf16CodeUnits(string $key): array
-    {
-        $values = unpack('S*', mb_convert_encoding($key, 'UTF-16LE', 'UTF-8'));
-        $this->assertIsArray($values);
-
-        return array_values($values);
-    }
-
-    /**
-     * 指定パスにバイナリファイルを書き込み、内容が欠けずに保存されたことを確認する。
-     */
-    private function writeBinaryFile(string $fileName, string $contents): void
-    {
-        $writtenBytes = file_put_contents($fileName, $contents);
-        $this->assertSame(strlen($contents), $writtenBytes);
-    }
-
-    /**
-     * 旧実装と同じ pack 形式で数値列をバイナリ文字列へ変換する。
-     *
-     * @param list<int> $values
-     */
-    private function packValues(string $format, array $values): string
-    {
-        $binary = '';
-
-        foreach ($values as $value) {
-            $binary .= pack($format, $value);
-        }
-
-        return $binary;
-    }
-}
-
-/**
- * テスト用 trie の base offset、終端 ID、子遷移を保持する単純なノード。
- */
-class TrieNode
-{
-    /** 完全一致するキーがある場合の trie ID を保持する。 */
-    public ?int $terminalId = null;
-
-    /** @var array<int, self> 文字コードごとの子ノードを保持する。 */
-    public array $children = [];
-
-    /**
-     * double-array 内でこのノードの遷移基準になる base offset を保持する。
-     */
-    public function __construct(
-        public int $base,
-    ) {}
 }
