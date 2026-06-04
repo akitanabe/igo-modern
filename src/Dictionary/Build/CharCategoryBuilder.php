@@ -287,7 +287,13 @@ class CharCategoryBuilder implements DictionaryBuildStep
      */
     private function resolveCategoryId(string $outputDirectory, string $encoding, string $categoryName): int
     {
-        return $this->categoryIdResolver->resolve($outputDirectory, $encoding, $categoryName);
+        $id = $this->categoryIdResolver->resolve($outputDirectory, $encoding, $categoryName);
+
+        if ($id < 0) {
+            throw new RuntimeException(sprintf('category id for %s must be non-negative.', $categoryName));
+        }
+
+        return $id;
     }
 
     /**

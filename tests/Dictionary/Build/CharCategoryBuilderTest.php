@@ -146,6 +146,26 @@ class CharCategoryBuilderTest extends TestCase
     }
 
     /**
+     * char.category に保存する未知語 trie ID は非負でなければならないため、resolver の不正値を拒否する。
+     */
+    public function testBuildFailsWhenResolvedCategoryIdIsNegative(): void
+    {
+        $inputDirectory = $this->createTemporaryDirectory('igo-char-in-');
+        $outputDirectory = $this->createTemporaryDirectory('igo-char-out-');
+        $this->writeTextFile($inputDirectory . '/char.def', "DEFAULT 1 0 1\nSPACE 0 1 2\n0x0020 SPACE\n");
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('category id for DEFAULT must be non-negative.');
+
+        (new CharCategoryBuilder(new MappingCategoryIdResolver(['DEFAULT' => -1, 'SPACE' => 1])))->build(
+            $outputDirectory,
+            $inputDirectory,
+            'UTF-8',
+            ',',
+        );
+    }
+
+    /**
      * 指定 prefix の一時ディレクトリを作成し、後片付け対象として記録する。
      */
     private function createTemporaryDirectory(string $prefix): string
