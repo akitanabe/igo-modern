@@ -94,7 +94,7 @@ class MatrixBuilder implements DictionaryBuildStep
     }
 
     /**
-     * 各コスト行を right-major 順の signed short 配列として検証しながら読み取る。
+     * 各コスト行を MeCab の left-major 順で検証し、runtime 用 right-major 配列へ詰め替える。
      *
      * @param list<array{number:int, line:string}> $lines
      * @return list<int>
@@ -107,21 +107,21 @@ class MatrixBuilder implements DictionaryBuildStep
             throw new RuntimeException('matrix.def entry count does not match header sizes.');
         }
 
-        $costs = [];
+        $costs = array_fill(0, $expectedEntryCount, 0);
 
         foreach ($lines as $index => $line) {
             [$leftId, $rightId, $cost] = $this->parseCostLine($line['line'], $line['number']);
-            $expectedLeftId = $index % $leftSize;
-            $expectedRightId = intdiv($index, $leftSize);
+            $expectedLeftId = intdiv($index, $rightSize);
+            $expectedRightId = $index % $rightSize;
 
             if ($leftId !== $expectedLeftId || $rightId !== $expectedRightId) {
                 throw new RuntimeException(sprintf('matrix.def line %d has unexpected context ids.', $line['number']));
             }
 
-            $costs[] = $cost;
+            $costs[($rightId * $leftSize) + $leftId] = $cost;
         }
 
-        return $costs;
+        return array_values($costs);
     }
 
     /**

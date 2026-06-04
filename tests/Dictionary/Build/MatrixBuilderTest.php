@@ -38,13 +38,13 @@ class MatrixBuilderTest extends TestCase
     }
 
     /**
-     * matrix.def のヘッダと right-major な連接コスト表から matrix.bin を生成できることを確認する。
+     * matrix.def の MeCab 順コスト表を runtime が読む right-major 配列へ変換できることを確認する。
      */
     public function testBuildWritesMatrixBinReadableByRuntimeMatrix(): void
     {
         $inputDirectory = $this->createTemporaryDirectory('igo-matrix-in-');
         $outputDirectory = $this->createTemporaryDirectory('igo-matrix-out-');
-        $this->writeTextFile($inputDirectory . '/matrix.def', "3 2\n0 0 10\n1 0 20\n2 0 30\n0 1 -5\n1 1 -6\n2 1 -7\n");
+        $this->writeTextFile($inputDirectory . '/matrix.def', "3 2\n0 0 10\n0 1 -5\n1 0 20\n1 1 -6\n2 0 30\n2 1 -7\n");
 
         (new MatrixBuilder())->build($outputDirectory, $inputDirectory, 'EUC-JP', ',');
 
@@ -80,7 +80,7 @@ class MatrixBuilderTest extends TestCase
     {
         $inputDirectory = $this->createTemporaryDirectory('igo-matrix-in-');
         $outputDirectory = $this->createTemporaryDirectory('igo-matrix-out-');
-        $this->writeTextFile($inputDirectory . '/matrix.def', "2 1\n1 0 20\n0 0 10\n");
+        $this->writeTextFile($inputDirectory . '/matrix.def', "2 2\n1 0 20\n0 0 10\n0 1 -5\n1 1 -6\n");
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('matrix.def line 2 has unexpected context ids.');

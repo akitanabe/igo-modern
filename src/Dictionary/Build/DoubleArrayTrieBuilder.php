@@ -22,7 +22,8 @@ class DoubleArrayTrieBuilder
 
         $root = $this->buildTrie($keys);
         $usedIndexes = [];
-        $this->assignBase($root, $usedIndexes);
+        $nextBaseCandidate = 1;
+        $this->assignBases($root, $usedIndexes, $nextBaseCandidate);
         $nodeSize = $this->nodeSize($usedIndexes);
         $base = array_fill(0, $nodeSize, 0);
         $chck = array_fill(0, $nodeSize, 0);
@@ -30,7 +31,7 @@ class DoubleArrayTrieBuilder
         $begs = array_fill(0, count($keys), 0);
         $lens = array_fill(0, count($keys), 0);
         $tail = [];
-        [$base, $chck, $begs, $lens, $tail] = $this->emitNode($root, $base, $chck, $begs, $lens, $tail);
+        $this->emitNode($root, $base, $chck, $begs, $lens, $tail);
         $this->writeBinaryFile($fileName, $this->dictionaryBinary(
             array_values($base),
             array_values($chck),
@@ -91,46 +92,72 @@ class DoubleArrayTrieBuilder
     }
 
     /**
-     * 各 trie ノードに、終端スロットと子遷移が衝突しない最小の base 値を割り当てる。
+     * 分岐の多い trie ノードから順に、衝突しない base 値を割り当てる。
      *
      * @param array<int, true> $usedIndexes
      */
-    private function assignBase(TrieBuildNode $node, array &$usedIndexes): void
+    private function assignBases(TrieBuildNode $root, array &$usedIndexes, int &$nextBaseCandidate): void
     {
-        $base = $this->findBase($node, $usedIndexes);
-        $node->base = $base;
-        $usedIndexes[$base] = true;
+        $nodes = $this->nodesNeedingBase($root);
+        usort(
+            $nodes,
+            static fn(TrieBuildNode $left, TrieBuildNode $right): int => (
+                count($right->children) <=> count($left->children)
+            ),
+        );
 
-        foreach (array_keys($node->children) as $code) {
-            $usedIndexes[$base + $code] = true;
+        foreach ($nodes as $node) {
+            $base = $this->findBase($node, $usedIndexes, $nextBaseCandidate);
+            $node->base = $base;
+            $usedIndexes[$base] = true;
+
+            foreach (array_keys($node->children) as $code) {
+                $usedIndexes[$base + $code] = true;
+            }
         }
+    }
+
+    /**
+     * tail 圧縮されず double-array 上に配置が必要な trie ノードだけを集める。
+     *
+     * @return list<TrieBuildNode>
+     */
+    private function nodesNeedingBase(TrieBuildNode $node): array
+    {
+        $nodes = [$node];
 
         foreach ($node->children as $child) {
             if ($this->compressedTail($child) !== null) {
                 continue;
             }
 
-            $this->assignBase($child, $usedIndexes);
+            array_push($nodes, ...$this->nodesNeedingBase($child));
         }
+
+        return $nodes;
     }
 
     /**
-     * 既存配置済み index と衝突しない base 値を線形探索で見つける。
+     * 既存配置済み index と衝突しない base 値を、前回の候補位置から前進して見つける。
      *
      * @param array<int, true> $usedIndexes
      */
-    private function findBase(TrieBuildNode $node, array $usedIndexes): int
+    private function findBase(TrieBuildNode $node, array &$usedIndexes, int &$nextBaseCandidate): int
     {
-        for ($base = 1;; $base++) {
+        $childCodes = array_keys($node->children);
+
+        for ($base = $nextBaseCandidate;; $base++) {
             if (isset($usedIndexes[$base])) {
                 continue;
             }
 
-            foreach (array_keys($node->children) as $code) {
+            foreach ($childCodes as $code) {
                 if (isset($usedIndexes[$base + $code])) {
                     continue 2;
                 }
             }
+
+            $nextBaseCandidate = $base + 1;
 
             return $base;
         }
@@ -172,16 +199,15 @@ class DoubleArrayTrieBuilder
      * @param array<int, int> $begs
      * @param array<int, int> $lens
      * @param list<int> $tail
-     * @return array{0:array<int, int>, 1:array<int, int>, 2:array<int, int>, 3:array<int, int>, 4:list<int>}
      */
     private function emitNode(
         TrieBuildNode $node,
-        array $base,
-        array $chck,
-        array $begs,
-        array $lens,
-        array $tail,
-    ): array {
+        array &$base,
+        array &$chck,
+        array &$begs,
+        array &$lens,
+        array &$tail,
+    ): void {
         $nodeBase = $this->assignedBase($node);
 
         if ($node->id === null) {
@@ -207,10 +233,8 @@ class DoubleArrayTrieBuilder
             }
 
             $base[$index] = $this->assignedBase($child);
-            [$base, $chck, $begs, $lens, $tail] = $this->emitNode($child, $base, $chck, $begs, $lens, $tail);
+            $this->emitNode($child, $base, $chck, $begs, $lens, $tail);
         }
-
-        return [$base, $chck, $begs, $lens, $tail];
     }
 
     /**

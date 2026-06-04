@@ -90,6 +90,19 @@ class DoubleArrayTrieBuilderTest extends TestCase
     }
 
     /**
+     * 大きな分岐を含むキー集合でも base 探索が実用的な時間で前進することを確認する。
+     */
+    public function testBuildPlacesLargeBranchingTrieWithinPracticalTime(): void
+    {
+        $fileName = $this->createTemporaryFile();
+        $startedAt = microtime(true);
+
+        (new DoubleArrayTrieBuilder())->build($this->largeBranchingKeys(), $fileName);
+
+        $this->assertLessThan(3.0, microtime(true) - $startedAt);
+    }
+
+    /**
      * 空のキーは Searcher の空文字一致と衝突するため、生成前に拒否することを確認する。
      */
     public function testBuildFailsWhenKeyIsEmpty(): void
@@ -121,6 +134,73 @@ class DoubleArrayTrieBuilderTest extends TestCase
         $this->temporaryFiles[] = $fileName;
 
         return $fileName;
+    }
+
+    /**
+     * 実辞書に近い広い分岐を持つキー集合を作り、配置探索の退行を観測しやすくする。
+     *
+     * @return array<string, int>
+     */
+    private function largeBranchingKeys(): array
+    {
+        $chars = [
+            '亜',
+            '唖',
+            '娃',
+            '阿',
+            '哀',
+            '愛',
+            '挨',
+            '姶',
+            '逢',
+            '葵',
+            '茜',
+            '穐',
+            '悪',
+            '握',
+            '渥',
+            '旭',
+            '葦',
+            '芦',
+            '鯵',
+            '梓',
+            '圧',
+            '斡',
+            '扱',
+            '宛',
+            '姐',
+            '虻',
+            '飴',
+            '絢',
+            '綾',
+            '鮎',
+            '或',
+            '粟',
+            '袷',
+            '安',
+            '庵',
+            '按',
+            '暗',
+            '案',
+            '闇',
+            '以',
+        ];
+        $keys = [];
+        $id = 0;
+
+        foreach ($chars as $first) {
+            foreach ($chars as $second) {
+                for ($suffix = 0; $suffix < 7; $suffix++) {
+                    $keys[$first . $second . $suffix] = $id++;
+
+                    if ($id >= 10_000) {
+                        return $keys;
+                    }
+                }
+            }
+        }
+
+        return $keys;
     }
 
     /**
