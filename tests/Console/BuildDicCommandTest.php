@@ -7,6 +7,7 @@ namespace IgoModern\Tests\Console;
 use IgoModern\Console\BuildDicCommand;
 use IgoModern\Dictionary\Build\DictionaryBuilder;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 use Symfony\Component\Console\Tester\CommandTester;
 
 /**
@@ -61,6 +62,29 @@ class BuildDicCommandTest extends TestCase
 
         $this->assertSame(0, $statusCode);
         $this->assertSame(',', $calls->all()[0]['delimiter']);
+    }
+
+    /**
+     * CSV parser が扱えない複数文字 delimiter は、builder 実行前に CLI 引数エラーとして拒否する。
+     */
+    public function testExecuteFailsWhenDelimiterHasMultipleCharacters(): void
+    {
+        $calls = new DictionaryBuilderCallLog();
+        $command = new BuildDicCommand(static function () use ($calls): DictionaryBuilder {
+            return new RecordingDictionaryBuilder($calls);
+        });
+
+        $tester = new CommandTester($command);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('argument "delimiter" must be a single-character string.');
+
+        $tester->execute([
+            'output-directory' => '/tmp/igo-out',
+            'input-directory' => '/tmp/igo-in',
+            'encoding' => 'UTF-8',
+            'delimiter' => '||',
+        ]);
     }
 }
 

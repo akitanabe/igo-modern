@@ -70,7 +70,7 @@ class BuildDicCommand extends Command
             $this->stringArgument($input, 'output-directory'),
             $this->stringArgument($input, 'input-directory'),
             $this->stringArgument($input, 'encoding'),
-            $this->stringArgument($input, 'delimiter'),
+            $this->delimiterArgument($input),
         );
 
         $output->writeln('dictionary built.');
@@ -90,5 +90,19 @@ class BuildDicCommand extends Command
         }
 
         return $value;
+    }
+
+    /**
+     * PHP の CSV parser に渡せる 1 文字 delimiter だけを CLI 引数として受け入れる。
+     */
+    private function delimiterArgument(InputInterface $input): string
+    {
+        $delimiter = $this->stringArgument($input, 'delimiter');
+
+        if (strlen($delimiter) !== 1) {
+            throw new RuntimeException('argument "delimiter" must be a single-character string.');
+        }
+
+        return $delimiter;
     }
 }
