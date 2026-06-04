@@ -12,23 +12,26 @@ use IgoModern\Binary\FileMappedInputStream;
  */
 class Matrix
 {
-    /** 右 ID ごとの行を平坦化した matrix 配列の行幅を保持する。 */
-    private int $leftSize;
-
-    /** 連接コスト表の signed short 値を必要に応じて読み出す。 */
-    private ShortArray $matrix;
+    /**
+     * 事前に読み込まれた行幅と連接コスト表を保持する。
+     */
+    public function __construct(
+        private int $leftSize,
+        private ShortArray $matrix,
+    ) {}
 
     /**
      * 辞書ディレクトリの matrix.bin を開き、ヘッダサイズとコスト表を読み込む。
      */
-    public function __construct(string $dataDir)
+    public static function fromDataDir(string $dataDir): self
     {
         $stream = new FileMappedInputStream($dataDir . '/matrix.bin');
 
         try {
-            $this->leftSize = $stream->getInt();
+            $leftSize = $stream->getInt();
             $rightSize = $stream->getInt();
-            $this->matrix = $stream->getShortArrayInstance($this->leftSize * $rightSize);
+
+            return new self($leftSize, $stream->getShortArrayInstance($leftSize * $rightSize));
         } finally {
             $stream->close();
         }

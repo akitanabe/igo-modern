@@ -12,28 +12,32 @@ use IgoModern\Binary\FileMappedInputStream;
  */
 class CharCategory
 {
-    /** @var list<Category> char.category に格納されたカテゴリ定義を保持する。 */
-    private array $categories;
-
-    /** 文字コードからカテゴリ配列の添字を引くための int 配列を保持する。 */
-    private IntArray $char2id;
-
-    /** 文字コード同士の連結互換性をビットマスクで判定するための int 配列を保持する。 */
-    private IntArray $eqlMasks;
+    /**
+     * 事前に読み込まれたカテゴリ定義と文字コード表を保持する。
+     *
+     * @param list<Category> $categories
+     */
+    public function __construct(
+        private array $categories,
+        private IntArray $char2id,
+        private IntArray $eqlMasks,
+    ) {}
 
     /**
      * 辞書ディレクトリからカテゴリ定義と文字コード別のカテゴリ・互換性表を読み込む。
      */
-    public function __construct(string $dataDir)
+    public static function fromDataDir(string $dataDir): self
     {
-        $this->categories = $this->readCategories($dataDir);
-
         $stream = new FileMappedInputStream($dataDir . '/code2category');
 
         try {
             $count = intdiv($stream->size(), 4 * 2);
-            $this->char2id = $stream->getIntArrayInstance($count);
-            $this->eqlMasks = $stream->getIntArrayInstance($count);
+
+            return new self(
+                self::readCategories($dataDir),
+                $stream->getIntArrayInstance($count),
+                $stream->getIntArrayInstance($count),
+            );
         } finally {
             $stream->close();
         }
@@ -60,7 +64,7 @@ class CharCategory
      *
      * @return list<Category>
      */
-    private function readCategories(string $dataDir): array
+    private static function readCategories(string $dataDir): array
     {
         $data = FileMappedInputStream::getIntArrayFromFile($dataDir . '/char.category');
         $size = intdiv(count($data), 4);

@@ -49,7 +49,7 @@ class TaggerTest extends TestCase
      */
     public function testParseReturnsMorphemesFromBestPath(): void
     {
-        $tagger = new Tagger($this->createDictionaryDirectory(2), null);
+        $tagger = Tagger::fromDataDir($this->createDictionaryDirectory(2), null);
 
         $result = $tagger->parse('AB');
 
@@ -65,7 +65,7 @@ class TaggerTest extends TestCase
      */
     public function testParseAppendsToGivenResultAndUsesOutputEncoding(): void
     {
-        $tagger = new Tagger($this->createDictionaryDirectory(1), 'SJIS');
+        $tagger = Tagger::fromDataDir($this->createDictionaryDirectory(1), 'SJIS');
         $existing = [new Morpheme('seed', 'seed-feature', 99)];
 
         $result = $tagger->parse('A', $existing);
@@ -82,7 +82,7 @@ class TaggerTest extends TestCase
      */
     public function testWakatiSkipsSpaceNodesAndReturnsSurfaces(): void
     {
-        $tagger = new Tagger($this->createDictionaryDirectory(1), null);
+        $tagger = Tagger::fromDataDir($this->createDictionaryDirectory(1), null);
 
         $this->assertSame(['A', 'B'], $tagger->wakati('A B'));
     }

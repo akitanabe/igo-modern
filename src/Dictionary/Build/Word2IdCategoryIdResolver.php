@@ -20,7 +20,7 @@ class Word2IdCategoryIdResolver implements CategoryIdResolver
         $key = $this->utf16CodeUnits("\002" . $categoryName);
         $callback = new ExactCategoryKeyCallback(count($key));
 
-        (new Searcher($outputDirectory . '/word2id'))->eachCommonPrefix($key, 0, $callback);
+        Searcher::fromFile($outputDirectory . '/word2id')->eachCommonPrefix($key, 0, $callback);
 
         $id = $callback->id();
 

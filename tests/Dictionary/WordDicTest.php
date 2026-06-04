@@ -44,7 +44,7 @@ class WordDicTest extends TestCase
      */
     public function testSearchExpandsTrieMatchesIntoWordNodes(): void
     {
-        $wordDic = new WordDic($this->createDictionaryDirectory());
+        $wordDic = WordDic::fromDataDir($this->createDictionaryDirectory());
         $callback = new CapturingWordDicCallback();
 
         $wordDic->search([10, 20, 30, 99], 0, $callback);
@@ -64,7 +64,7 @@ class WordDicTest extends TestCase
      */
     public function testSearchFromTrieIdUsesGivenRangeAndSpaceFlag(): void
     {
-        $wordDic = new WordDic($this->createDictionaryDirectory());
+        $wordDic = WordDic::fromDataDir($this->createDictionaryDirectory());
         $callback = new CapturingWordDicCallback();
 
         $wordDic->searchFromTrieId(0, 5, 4, true, $callback);
@@ -83,7 +83,7 @@ class WordDicTest extends TestCase
      */
     public function testWordDataReturnsFeatureBytesByWordOffsets(): void
     {
-        $wordDic = new WordDic($this->createDictionaryDirectory());
+        $wordDic = WordDic::fromDataDir($this->createDictionaryDirectory());
 
         $this->assertSame($this->packValues('S', [1000, 1001]), $wordDic->wordData(0));
         $this->assertSame($this->packValues('S', [2000]), $wordDic->wordData(1));
@@ -95,7 +95,7 @@ class WordDicTest extends TestCase
      */
     public function testWordRangeIndicesAreReadDynamically(): void
     {
-        $wordDic = new WordDic($this->createDictionaryDirectory());
+        $wordDic = WordDic::fromDataDir($this->createDictionaryDirectory());
         $indicesProperty = new ReflectionProperty(WordDic::class, 'indices');
         $indicesProperty->setAccessible(true);
 

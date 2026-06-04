@@ -35,7 +35,7 @@ class WordDataReaderTest extends TestCase
      */
     public function testReadCodeUnitSliceReturnsFeatureBytesByOffsets(): void
     {
-        $reader = new WordDataReader($this->createWordDataFile($this->packValues('S', [1000, 1001, 2000, 3000])));
+        $reader = WordDataReader::fromFile($this->createWordDataFile($this->packValues('S', [1000, 1001, 2000, 3000])));
 
         $this->assertSame($this->packValues('S', [1001, 2000]), $reader->readCodeUnitSlice(1, 3));
         $this->assertSame($this->packValues('S', [3000]), $reader->readCodeUnitSlice(3, 4));
@@ -46,7 +46,7 @@ class WordDataReaderTest extends TestCase
      */
     public function testReadCodeUnitSliceReturnsEmptyStringForEmptyRange(): void
     {
-        $reader = new WordDataReader($this->createWordDataFile($this->packValues('S', [1000])));
+        $reader = WordDataReader::fromFile($this->createWordDataFile($this->packValues('S', [1000])));
 
         $this->assertSame('', $reader->readCodeUnitSlice(1, 1));
     }
@@ -56,7 +56,7 @@ class WordDataReaderTest extends TestCase
      */
     public function testReadCodeUnitSliceRejectsNegativeLengthRange(): void
     {
-        $reader = new WordDataReader($this->createWordDataFile($this->packValues('S', [1000])));
+        $reader = WordDataReader::fromFile($this->createWordDataFile($this->packValues('S', [1000])));
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('dictionary reading failed.');

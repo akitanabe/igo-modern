@@ -12,15 +12,19 @@ use RuntimeException;
  */
 class WordDataReader
 {
-    /** word.dat をページキャッシュ経由で範囲読み込みする reader を保持する。 */
-    private PagedBinaryReader $reader;
+    /**
+     * 事前に用意されたページ読み込み reader を保持する。
+     */
+    public function __construct(
+        private PagedBinaryReader $reader,
+    ) {}
 
     /**
      * 素性データの読み取り対象ファイルを開く。
      */
-    public function __construct(string $fileName)
+    public static function fromFile(string $fileName): self
     {
-        $this->reader = new PagedBinaryReader($fileName);
+        return new self(new PagedBinaryReader($fileName));
     }
 
     /**

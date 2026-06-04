@@ -11,15 +11,19 @@ use IgoModern\Analysis\Tagger;
  */
 class Igo implements Parser
 {
-    /** 解析処理の実体である Tagger を保持する。 */
-    private Tagger $tagger;
+    /**
+     * 事前に構築された Tagger を公開 API の実体として保持する。
+     */
+    public function __construct(
+        private Tagger $tagger,
+    ) {}
 
     /**
-     * 辞書ディレクトリと出力エンコーディングから Tagger を初期化する。
+     * 辞書ディレクトリと出力エンコーディングから公開 API を構築する。
      */
-    public function __construct(string $dataDir, ?string $outputEncoding = null)
+    public static function fromDataDir(string $dataDir, ?string $outputEncoding = null): self
     {
-        $this->tagger = new Tagger($dataDir, $outputEncoding);
+        return new self(Tagger::fromDataDir($dataDir, $outputEncoding));
     }
 
     /**

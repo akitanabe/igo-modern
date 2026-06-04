@@ -64,7 +64,7 @@ class CharCategoryBuilderTest extends TestCase
             'SYMBOL' => 23,
         ])))->build($outputDirectory, $inputDirectory, 'UTF-8', ',');
 
-        $category = new CharCategory($outputDirectory);
+        $category = CharCategory::fromDataDir($outputDirectory);
         $default = $category->category(0x0000);
         $space = $category->category(0x0020);
         $alpha = $category->category(0x0041);

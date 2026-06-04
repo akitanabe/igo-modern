@@ -45,7 +45,7 @@ class DoubleArrayTrieBuilderTest extends TestCase
             '猫' => 3,
         ], $fileName);
 
-        $searcher = new Searcher($fileName);
+        $searcher = Searcher::fromFile($fileName);
         $latin = new CapturingPrefixCallback();
         $category = new CapturingPrefixCallback();
         $japanese = new CapturingPrefixCallback();
@@ -77,7 +77,7 @@ class DoubleArrayTrieBuilderTest extends TestCase
             '東京' => 1,
         ], $fileName);
 
-        $searcher = new Searcher($fileName);
+        $searcher = Searcher::fromFile($fileName);
         $category = new CapturingPrefixCallback();
         $place = new CapturingPrefixCallback();
 

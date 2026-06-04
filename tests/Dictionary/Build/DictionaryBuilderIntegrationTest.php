@@ -66,7 +66,7 @@ class DictionaryBuilderIntegrationTest extends TestCase
 
         DictionaryBuilder::standard()->build($outputDirectory, $inputDirectory, 'UTF-8');
 
-        $result = (new Igo($outputDirectory, 'UTF-8'))->parse('猫AB');
+        $result = Igo::fromDataDir($outputDirectory, 'UTF-8')->parse('猫AB');
 
         $this->assertCount(2, $result);
         $this->assertSame('猫', $result[0]->surface);
@@ -91,17 +91,17 @@ class DictionaryBuilderIntegrationTest extends TestCase
         $this->assertDictionaryFilesExist($outputDirectory);
 
         $wordCallback = new CapturingIntegrationWordCallback();
-        (new WordDic($outputDirectory))->search($this->utf16CodeUnits('猫AB'), 0, $wordCallback);
+        WordDic::fromDataDir($outputDirectory)->search($this->utf16CodeUnits('猫AB'), 0, $wordCallback);
 
         $prefixCallback = new CapturingIntegrationPrefixCallback();
-        (new Searcher($outputDirectory . '/word2id'))->eachCommonPrefix(
+        Searcher::fromFile($outputDirectory . '/word2id')->eachCommonPrefix(
             $this->utf16CodeUnits("\002ALPHA"),
             0,
             $prefixCallback,
         );
 
-        $matrix = new Matrix($outputDirectory);
-        $category = new CharCategory($outputDirectory);
+        $matrix = Matrix::fromDataDir($outputDirectory);
+        $category = CharCategory::fromDataDir($outputDirectory);
 
         $this->assertSame([[3, 0, 1, -100, 0, 0, false]], $wordCallback->nodeSummaries());
         $this->assertSame([['start' => 0, 'offset' => 6]], $prefixCallback->ranges());

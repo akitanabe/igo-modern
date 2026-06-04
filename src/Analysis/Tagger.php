@@ -18,15 +18,6 @@ class Tagger
     /** @var list<ViterbiNode> 文頭ノードだけを持つ初期候補列を保持する。 */
     private static array $bosNodes = [];
 
-    /** 単語候補を復元する通常単語辞書を保持する。 */
-    private WordDic $wordDic;
-
-    /** 通常辞書にない文字列の候補を復元する未知語辞書を保持する。 */
-    private Unknown $unknown;
-
-    /** 候補ノード間の連接コストを参照する行列を保持する。 */
-    private Matrix $matrix;
-
     /** 入力文字列から検出した文字エンコーディングを保持する。 */
     private string $inputEncoding = 'UTF-8';
 
@@ -34,20 +25,32 @@ class Tagger
     private string $dictionaryEncoding;
 
     /**
-     * 辞書ディレクトリから解析に必要な辞書を読み込み、出力エンコーディングを保持する。
+     * 事前に読み込まれた解析用辞書と出力エンコーディングを保持する。
      */
     public function __construct(
-        string $dataDir,
+        private WordDic $wordDic,
+        private Unknown $unknown,
+        private Matrix $matrix,
         private ?string $outputEncoding = null,
     ) {
         if (self::$bosNodes === []) {
             self::$bosNodes = [ViterbiNode::makeBOSEOS()];
         }
 
-        $this->wordDic = new WordDic($dataDir);
-        $this->unknown = new Unknown($dataDir);
-        $this->matrix = new Matrix($dataDir);
         $this->dictionaryEncoding = self::detectDictionaryEncoding();
+    }
+
+    /**
+     * 辞書ディレクトリから解析に必要な辞書を読み込む。
+     */
+    public static function fromDataDir(string $dataDir, ?string $outputEncoding = null): self
+    {
+        return new self(
+            WordDic::fromDataDir($dataDir),
+            Unknown::fromDataDir($dataDir),
+            Matrix::fromDataDir($dataDir),
+            $outputEncoding,
+        );
     }
 
     /**

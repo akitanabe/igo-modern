@@ -67,7 +67,7 @@ class WordDictionaryBuilderTest extends TestCase
 
         (new WordDictionaryBuilder())->build($outputDirectory, $inputDirectory, 'UTF-8', ',');
 
-        $wordDic = new WordDic($outputDirectory);
+        $wordDic = WordDic::fromDataDir($outputDirectory);
         $normalCallback = new CapturingBuiltWordCallback();
         $wordDic->search($this->utf16CodeUnits('猫語です'), 0, $normalCallback);
 

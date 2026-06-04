@@ -14,28 +14,22 @@ use IgoModern\Binary\FileMappedInputStream;
  */
 class Searcher
 {
-    /** 辞書に登録されているキー数を保持する。 */
-    private int $keySetSize;
-
-    /** double-array trie の base 配列を添字指定で読む。 */
-    private IntArray $base;
-
-    /** double-array trie の check 配列を添字指定で読む。 */
-    private CharArray $chck;
-
-    /** tail 配列内で各語の suffix が始まる位置を読む。 */
-    private IntArray $begs;
-
-    /** tail 配列に格納された各語の suffix 長を読む。 */
-    private ShortArray $lens;
-
-    /** tail 圧縮された suffix の文字コード列を必要な添字だけ読む。 */
-    private CharArray $tail;
+    /**
+     * 事前に読み込まれた double-array trie と tail 情報を保持する。
+     */
+    public function __construct(
+        private int $keySetSize,
+        private IntArray $begs,
+        private IntArray $base,
+        private ShortArray $lens,
+        private CharArray $chck,
+        private CharArray $tail,
+    ) {}
 
     /**
      * 辞書バイナリから double-array trie と tail 情報を復元する。
      */
-    public function __construct(string $filePath)
+    public static function fromFile(string $filePath): self
     {
         $stream = new FileMappedInputStream($filePath);
 
@@ -44,12 +38,14 @@ class Searcher
             $tailIndexSize = $stream->getInt();
             $tailSize = $stream->getInt();
 
-            $this->keySetSize = $tailIndexSize;
-            $this->begs = $stream->getIntArrayInstance($tailIndexSize);
-            $this->base = $stream->getIntArrayInstance($nodeSize);
-            $this->lens = $stream->getShortArrayInstance($tailIndexSize);
-            $this->chck = $stream->getCharArrayInstance($nodeSize);
-            $this->tail = $stream->getCharArrayInstance($tailSize);
+            return new self(
+                $tailIndexSize,
+                $stream->getIntArrayInstance($tailIndexSize),
+                $stream->getIntArrayInstance($nodeSize),
+                $stream->getShortArrayInstance($tailIndexSize),
+                $stream->getCharArrayInstance($nodeSize),
+                $stream->getCharArrayInstance($tailSize),
+            );
         } finally {
             $stream->close();
         }

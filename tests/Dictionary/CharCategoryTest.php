@@ -41,7 +41,7 @@ class CharCategoryTest extends TestCase
      */
     public function testCategoryReturnsCategoryAssignedToCharacterCode(): void
     {
-        $category = new CharCategory($this->createDictionaryDirectory(
+        $category = CharCategory::fromDataDir($this->createDictionaryDirectory(
             [
                 ['id' => 0, 'length' => 1, 'invoke' => false, 'group' => false],
                 ['id' => 7, 'length' => 3, 'invoke' => true, 'group' => false],
@@ -70,7 +70,7 @@ class CharCategoryTest extends TestCase
      */
     public function testIsCompatibleUsesSharedMaskBits(): void
     {
-        $category = new CharCategory($this->createDictionaryDirectory(
+        $category = CharCategory::fromDataDir($this->createDictionaryDirectory(
             [
                 ['id' => 0, 'length' => 1, 'invoke' => false, 'group' => false],
                 ['id' => 1, 'length' => 2, 'invoke' => true, 'group' => true],

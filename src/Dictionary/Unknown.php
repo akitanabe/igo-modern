@@ -9,19 +9,24 @@ namespace IgoModern\Dictionary;
  */
 class Unknown
 {
-    /** 文字コードから未知語カテゴリと連結互換性を引く辞書を保持する。 */
-    private CharCategory $category;
-
     /** SPACE として予約された文字カテゴリの辞書 ID を保持する。 */
     private int $spaceId;
 
     /**
-     * 辞書ディレクトリから未知語カテゴリ辞書を読み込み、SPACE カテゴリ ID を確定する。
+     * 事前に読み込まれた文字カテゴリ辞書を保持し、SPACE カテゴリ ID を確定する。
      */
-    public function __construct(string $dataDir)
-    {
-        $this->category = new CharCategory($dataDir);
+    public function __construct(
+        private CharCategory $category,
+    ) {
         $this->spaceId = $this->category->category(32)->id;
+    }
+
+    /**
+     * 辞書ディレクトリから未知語カテゴリ辞書を読み込む。
+     */
+    public static function fromDataDir(string $dataDir): self
+    {
+        return new self(CharCategory::fromDataDir($dataDir));
     }
 
     /**

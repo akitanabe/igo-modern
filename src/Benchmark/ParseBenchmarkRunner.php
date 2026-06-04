@@ -24,7 +24,8 @@ class ParseBenchmarkRunner
      */
     public function __construct(?callable $parserFactory = null)
     {
-        $this->parserFactory = $parserFactory ?? static fn(string $dictionary): Parser => new Igo($dictionary, 'UTF-8');
+        $this->parserFactory =
+            $parserFactory ?? static fn(string $dictionary): Parser => Igo::fromDataDir($dictionary, 'UTF-8');
     }
 
     /**

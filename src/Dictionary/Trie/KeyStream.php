@@ -11,20 +11,15 @@ use IgoModern\Binary\Contract\CharArray;
  */
 class KeyStream
 {
-    /** @var list<int> 読み取り対象のキー文字コード列を保持する。 */
-    private array $s;
-
     /**
      * キー文字コード列と読み取り開始位置を保持する。
      *
-     * @param list<int> $key
+     * @param list<int> $s
      */
     public function __construct(
-        array $key,
+        private array $s,
         private int $cur = 0,
-    ) {
-        $this->s = $key;
-    }
+    ) {}
 
     /**
      * 現在位置から prefix の指定範囲が続いているかを判定する。

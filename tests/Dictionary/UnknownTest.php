@@ -58,8 +58,8 @@ class UnknownTest extends TestCase
             [32 => 0, 65 => 1, 66 => 1, 67 => 1],
             [65 => 0b0001, 66 => 0b0001, 67 => 0b0010],
         );
-        $unknown = new Unknown($directory);
-        $wordDic = new WordDic($directory);
+        $unknown = Unknown::fromDataDir($directory);
+        $wordDic = WordDic::fromDataDir($directory);
         $callback = new CapturingUnknownCallback();
 
         $unknown->search([65, 66, 67], 0, $wordDic, $callback);
@@ -86,8 +86,8 @@ class UnknownTest extends TestCase
             [32 => 0, 70 => 1, 71 => 1, 72 => 1, 73 => 1],
             [70 => 0b0100, 71 => 0b0100, 72 => 0b0100, 73 => 0b1000],
         );
-        $unknown = new Unknown($directory);
-        $wordDic = new WordDic($directory);
+        $unknown = Unknown::fromDataDir($directory);
+        $wordDic = WordDic::fromDataDir($directory);
         $callback = new CapturingUnknownCallback();
 
         $unknown->search([70, 71, 72, 73], 0, $wordDic, $callback);
@@ -115,8 +115,8 @@ class UnknownTest extends TestCase
             [32 => 0, 80 => 1],
             [80 => 0b0001],
         );
-        $unknown = new Unknown($directory);
-        $wordDic = new WordDic($directory);
+        $unknown = Unknown::fromDataDir($directory);
+        $wordDic = WordDic::fromDataDir($directory);
         $callback = new CapturingUnknownCallback(false);
 
         $unknown->search([80], 0, $wordDic, $callback);
@@ -136,8 +136,8 @@ class UnknownTest extends TestCase
             [32 => 0],
             [32 => 0b0001],
         );
-        $unknown = new Unknown($directory);
-        $wordDic = new WordDic($directory);
+        $unknown = Unknown::fromDataDir($directory);
+        $wordDic = WordDic::fromDataDir($directory);
         $callback = new CapturingUnknownCallback();
 
         $unknown->search([32, 32], 0, $wordDic, $callback);

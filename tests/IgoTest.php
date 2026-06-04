@@ -49,7 +49,7 @@ class IgoTest extends TestCase
      */
     public function testParseReturnsMorphemes(): void
     {
-        $igo = new Igo($this->createDictionaryDirectory(2), null);
+        $igo = Igo::fromDataDir($this->createDictionaryDirectory(2), null);
 
         $result = $igo->parse('AB');
 
@@ -65,7 +65,7 @@ class IgoTest extends TestCase
      */
     public function testWakatiReturnsSurfaces(): void
     {
-        $igo = new Igo($this->createDictionaryDirectory(1), null);
+        $igo = Igo::fromDataDir($this->createDictionaryDirectory(1), null);
 
         $this->assertSame(['A', 'B'], $igo->wakati('A B'));
     }

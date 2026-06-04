@@ -48,7 +48,7 @@ class MatrixBuilderTest extends TestCase
 
         (new MatrixBuilder())->build($outputDirectory, $inputDirectory, 'EUC-JP', ',');
 
-        $matrix = new Matrix($outputDirectory);
+        $matrix = Matrix::fromDataDir($outputDirectory);
         $this->assertSame(10, $matrix->linkCost(0, 0));
         $this->assertSame(30, $matrix->linkCost(2, 0));
         $this->assertSame(-5, $matrix->linkCost(0, 1));

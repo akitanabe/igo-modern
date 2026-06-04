@@ -37,7 +37,7 @@ class SearcherTest extends TestCase
      */
     public function testSizeAndIdFollowDictionaryEncoding(): void
     {
-        $searcher = new Searcher($this->createDictionaryFile());
+        $searcher = Searcher::fromFile($this->createDictionaryFile());
 
         $this->assertSame(2, $searcher->size());
         $this->assertSame(0, Searcher::ID(-1));
@@ -49,7 +49,7 @@ class SearcherTest extends TestCase
      */
     public function testEachCommonPrefixCallsCallbackForTerminalAndTailMatches(): void
     {
-        $searcher = new Searcher($this->createDictionaryFile());
+        $searcher = Searcher::fromFile($this->createDictionaryFile());
         $callback = new CapturingCommonPrefixCallback();
 
         $searcher->eachCommonPrefix([10, 20, 30, 99], 0, $callback);
@@ -68,7 +68,7 @@ class SearcherTest extends TestCase
      */
     public function testEachCommonPrefixUsesStartOffsetAndSkipsMissingPrefix(): void
     {
-        $searcher = new Searcher($this->createDictionaryFile());
+        $searcher = Searcher::fromFile($this->createDictionaryFile());
         $callback = new CapturingCommonPrefixCallback();
 
         $searcher->eachCommonPrefix([99, 10, 20, 30], 1, $callback);
@@ -88,7 +88,7 @@ class SearcherTest extends TestCase
      */
     public function testTailIsReadDynamically(): void
     {
-        $searcher = new Searcher($this->createDictionaryFile());
+        $searcher = Searcher::fromFile($this->createDictionaryFile());
         $tailProperty = new ReflectionProperty(Searcher::class, 'tail');
         $tailProperty->setAccessible(true);
 

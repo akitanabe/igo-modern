@@ -35,7 +35,10 @@ class ParseCommand extends Command
 
         $this->parserFactory =
             $parserFactory
-            ?? static fn(string $dataDir, ?string $outputEncoding): Parser => new Igo($dataDir, $outputEncoding);
+            ?? static fn(string $dataDir, ?string $outputEncoding): Parser => Igo::fromDataDir(
+                $dataDir,
+                $outputEncoding,
+            );
     }
 
     /**
