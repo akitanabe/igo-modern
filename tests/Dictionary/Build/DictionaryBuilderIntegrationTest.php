@@ -4,7 +4,14 @@ declare(strict_types=1);
 
 namespace IgoModern\Tests\Dictionary\Build;
 
+use IgoModern\Analysis\ViterbiNode;
 use IgoModern\Dictionary\Build\DictionaryBuilder;
+use IgoModern\Dictionary\CharCategory;
+use IgoModern\Dictionary\Matrix;
+use IgoModern\Dictionary\Trie\CommonPrefixCallback;
+use IgoModern\Dictionary\Trie\Searcher;
+use IgoModern\Dictionary\WordDic;
+use IgoModern\Dictionary\WordDicCallback;
 use IgoModern\Igo;
 use PHPUnit\Framework\TestCase;
 
@@ -71,6 +78,39 @@ class DictionaryBuilderIntegrationTest extends TestCase
     }
 
     /**
+     * 標準 builder の生成ファイル群を runtime の各 reader が直接読み込めることを確認する。
+     */
+    public function testBuildCreatesDictionaryFilesReadableByRuntimeReaders(): void
+    {
+        $inputDirectory = $this->createTemporaryDirectory('igo-build-input-');
+        $outputDirectory = $this->createTemporaryDirectory('igo-build-output-');
+        $this->writeFixture($inputDirectory);
+
+        DictionaryBuilder::standard()->build($outputDirectory, $inputDirectory, 'UTF-8');
+
+        $this->assertDictionaryFilesExist($outputDirectory);
+
+        $wordCallback = new CapturingIntegrationWordCallback();
+        (new WordDic($outputDirectory))->search($this->utf16CodeUnits('猫AB'), 0, $wordCallback);
+
+        $prefixCallback = new CapturingIntegrationPrefixCallback();
+        (new Searcher($outputDirectory . '/word2id'))->eachCommonPrefix(
+            $this->utf16CodeUnits("\002ALPHA"),
+            0,
+            $prefixCallback,
+        );
+
+        $matrix = new Matrix($outputDirectory);
+        $category = new CharCategory($outputDirectory);
+
+        $this->assertSame([[3, 0, 1, -100, 0, 0, false]], $wordCallback->nodeSummaries());
+        $this->assertSame([['start' => 0, 'offset' => 6]], $prefixCallback->ranges());
+        $this->assertSame(0, $matrix->linkCost(0, 0));
+        $this->assertSame(4, $category->category(0x0041)->length);
+        $this->assertTrue($category->isCompatible(0x0041, 0x0042));
+    }
+
+    /**
      * 指定 prefix の一時ディレクトリを作成し、後片付け対象として記録する。
      */
     private function createTemporaryDirectory(string $prefix): string
@@ -82,6 +122,24 @@ class DictionaryBuilderIntegrationTest extends TestCase
         $this->temporaryDirectories[] = $baseName;
 
         return $baseName;
+    }
+
+    /**
+     * 辞書生成の公開成果物がすべて出力されていることを確認する。
+     */
+    private function assertDictionaryFilesExist(string $directory): void
+    {
+        foreach ([
+            'word2id',
+            'word.inf',
+            'word.dat',
+            'word.ary.idx',
+            'matrix.bin',
+            'char.category',
+            'code2category',
+        ] as $fileName) {
+            $this->assertFileExists($directory . '/' . $fileName);
+        }
     }
 
     /**
@@ -107,11 +165,97 @@ class DictionaryBuilderIntegrationTest extends TestCase
     }
 
     /**
+     * UTF-8 文字列を runtime reader と同じ UTF-16LE code unit 配列へ変換する。
+     *
+     * @return list<int>
+     */
+    private function utf16CodeUnits(string $text): array
+    {
+        $values = unpack('S*', mb_convert_encoding($text, 'UTF-16LE', 'UTF-8'));
+        $this->assertIsArray($values);
+
+        return array_values($values);
+    }
+
+    /**
      * テスト入力ファイルを書き込み、期待バイト数が保存されたことを確認する。
      */
     private function writeTextFile(string $fileName, string $contents): void
     {
         $writtenBytes = file_put_contents($fileName, $contents);
         $this->assertSame(strlen($contents), $writtenBytes);
+    }
+}
+
+/**
+ * 統合テストで WordDic から通知された候補ノードを検証しやすい形で保持する。
+ */
+class CapturingIntegrationWordCallback implements WordDicCallback
+{
+    /** @var list<ViterbiNode> 生成辞書から見つかった候補ノードを順序付きで保持する。 */
+    private array $nodes = [];
+
+    /**
+     * WordDic が見つけた候補ノードを記録する。
+     */
+    public function call(ViterbiNode $node): void
+    {
+        $this->nodes[] = $node;
+    }
+
+    /**
+     * 統合テストでは候補通知の有無をそのまま空状態として返す。
+     */
+    public function isEmpty(): bool
+    {
+        return $this->nodes === [];
+    }
+
+    /**
+     * 候補ノードの主要属性を比較しやすい配列へ変換する。
+     *
+     * @return list<array{0:int, 1:int, 2:int, 3:int, 4:int, 5:int, 6:bool}>
+     */
+    public function nodeSummaries(): array
+    {
+        return array_map(static fn(ViterbiNode $node): array => [
+            $node->wordId,
+            $node->start,
+            $node->length,
+            $node->cost,
+            $node->leftId,
+            $node->rightId,
+            $node->isSpace,
+        ], $this->nodes);
+    }
+}
+
+/**
+ * 統合テストで Searcher から通知された共通接頭辞範囲を保持する。
+ */
+class CapturingIntegrationPrefixCallback implements CommonPrefixCallback
+{
+    /** @var list<array{start:int, offset:int, id:int}> Searcher が見つけた一致を順序付きで保持する。 */
+    private array $matches = [];
+
+    /**
+     * Searcher から通知された一致範囲と trie ID を記録する。
+     */
+    public function call(int $start, int $offset, int $id): void
+    {
+        $this->matches[] = ['start' => $start, 'offset' => $offset, 'id' => $id];
+    }
+
+    /**
+     * trie ID に依存しない reader 検証用に一致範囲だけを返す。
+     *
+     * @return list<array{start:int, offset:int}>
+     */
+    public function ranges(): array
+    {
+        return array_map(static fn(array $match): array => [
+            'start' => $match['start'],
+            'offset' => $match['offset'],
+        ], $this->matches);
     }
 }
