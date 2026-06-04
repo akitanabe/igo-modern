@@ -141,6 +141,10 @@ class WordDictionaryBuilder implements DictionaryBuildStep
         $rightId = (int) $fields[1];
         $cost = (int) $fields[2];
 
+        if ($leftId < 0 || $rightId < 0) {
+            throw new RuntimeException(sprintf('%s line %d word ids must be non-negative.', $sourceName, $lineNumber));
+        }
+
         if (!$this->isSignedShort($leftId) || !$this->isSignedShort($rightId) || !$this->isSignedShort($cost)) {
             throw new RuntimeException(sprintf(
                 '%s line %d word ids or cost is outside signed short range.',
