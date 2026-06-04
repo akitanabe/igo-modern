@@ -44,7 +44,7 @@ class ArrayTest extends TestCase
      */
     public function testIntMemoryArrayReturnsValuesLoadedFromReader(): void
     {
-        $array = new IntMemoryArray($this->createIntReader([5, -7, 13]), 3);
+        $array = IntMemoryArray::fromReader($this->createIntReader([5, -7, 13]), 3);
 
         $this->assertSame(5, $array->get(0));
         $this->assertSame(-7, $array->get(1));
@@ -56,7 +56,7 @@ class ArrayTest extends TestCase
      */
     public function testIntMemoryArrayStoresValuesInFixedArray(): void
     {
-        $array = new IntMemoryArray($this->createIntReader([5, -7, 13]), 3);
+        $array = IntMemoryArray::fromReader($this->createIntReader([5, -7, 13]), 3);
         $arrayProperty = new ReflectionProperty(IntMemoryArray::class, 'array');
         $arrayProperty->setAccessible(true);
 
@@ -69,7 +69,7 @@ class ArrayTest extends TestCase
     public function testIntDynamicArrayReturnsValuesLoadedFromFileOffset(): void
     {
         $fileName = $this->createBinaryFile('xx' . $this->packValues('l', [10, -20, 30]));
-        $array = new IntDynamicArray($fileName, 2);
+        $array = IntDynamicArray::fromFile($fileName, 2);
 
         $this->assertSame(10, $array->get(0));
         $this->assertSame(-20, $array->get(1));
@@ -81,7 +81,7 @@ class ArrayTest extends TestCase
      */
     public function testShortMemoryArrayReturnsValuesLoadedFromReader(): void
     {
-        $array = new ShortMemoryArray($this->createShortReader([12, -34, 56]), 3);
+        $array = ShortMemoryArray::fromReader($this->createShortReader([12, -34, 56]), 3);
 
         $this->assertSame(12, $array->get(0));
         $this->assertSame(-34, $array->get(1));
@@ -94,7 +94,7 @@ class ArrayTest extends TestCase
     public function testShortDynamicArrayReturnsValuesLoadedFromFileOffset(): void
     {
         $fileName = $this->createBinaryFile('x' . $this->packValues('s', [100, -200, 300]));
-        $array = new ShortDynamicArray($fileName, 1);
+        $array = ShortDynamicArray::fromFile($fileName, 1);
 
         $this->assertSame(100, $array->get(0));
         $this->assertSame(-200, $array->get(1));
@@ -106,7 +106,7 @@ class ArrayTest extends TestCase
      */
     public function testCharMemoryArrayReturnsValuesLoadedFromReader(): void
     {
-        $array = new CharMemoryArray($this->createCharReader([65, 40_000, 65_535]), 3);
+        $array = CharMemoryArray::fromReader($this->createCharReader([65, 40_000, 65_535]), 3);
 
         $this->assertSame(65, $array->get(0));
         $this->assertSame(40_000, $array->get(1));
@@ -119,7 +119,7 @@ class ArrayTest extends TestCase
     public function testCharDynamicArrayReturnsValuesLoadedFromFileOffset(): void
     {
         $fileName = $this->createBinaryFile('x' . $this->packValues('S', [65, 40_000, 65_535]));
-        $array = new CharDynamicArray($fileName, 1);
+        $array = CharDynamicArray::fromFile($fileName, 1);
 
         $this->assertSame(65, $array->get(0));
         $this->assertSame(40_000, $array->get(1));

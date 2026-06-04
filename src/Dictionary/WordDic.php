@@ -33,7 +33,7 @@ class WordDic
      */
     public static function fromDataDir(string $dataDir): self
     {
-        $stream = new FileMappedInputStream($dataDir . '/word.inf');
+        $stream = FileMappedInputStream::fromFile($dataDir . '/word.inf');
 
         try {
             $wordCount = intdiv($stream->size(), 4 + 2 + 2 + 2);
@@ -108,7 +108,7 @@ class WordDic
      */
     private static function readIndices(string $fileName): IntArray
     {
-        $stream = new FileMappedInputStream($fileName);
+        $stream = FileMappedInputStream::fromFile($fileName);
 
         try {
             return $stream->getIntArrayInstance(intdiv($stream->size(), 4));

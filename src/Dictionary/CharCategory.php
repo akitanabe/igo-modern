@@ -28,7 +28,7 @@ class CharCategory
      */
     public static function fromDataDir(string $dataDir): self
     {
-        $stream = new FileMappedInputStream($dataDir . '/code2category');
+        $stream = FileMappedInputStream::fromFile($dataDir . '/code2category');
 
         try {
             $count = intdiv($stream->size(), 4 * 2);

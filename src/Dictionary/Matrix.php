@@ -25,7 +25,7 @@ class Matrix
      */
     public static function fromDataDir(string $dataDir): self
     {
-        $stream = new FileMappedInputStream($dataDir . '/matrix.bin');
+        $stream = FileMappedInputStream::fromFile($dataDir . '/matrix.bin');
 
         try {
             $leftSize = $stream->getInt();

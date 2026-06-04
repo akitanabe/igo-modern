@@ -35,7 +35,7 @@ class PagedBinaryReaderTest extends TestCase
      */
     public function testReadBytesReturnsSliceWithinPage(): void
     {
-        $reader = new PagedBinaryReader($this->createBinaryFile('abcdefghij'), 4);
+        $reader = PagedBinaryReader::fromFile($this->createBinaryFile('abcdefghij'), 4);
 
         $this->assertSame('cde', $reader->readBytes(2, 3));
     }
@@ -45,7 +45,7 @@ class PagedBinaryReaderTest extends TestCase
      */
     public function testReadBytesReturnsSliceAcrossPageBoundary(): void
     {
-        $reader = new PagedBinaryReader($this->createBinaryFile('abcdefghij'), 4);
+        $reader = PagedBinaryReader::fromFile($this->createBinaryFile('abcdefghij'), 4);
 
         $this->assertSame('defgh', $reader->readBytes(3, 5));
     }
@@ -55,7 +55,7 @@ class PagedBinaryReaderTest extends TestCase
      */
     public function testReadBytesReturnsEmptyStringForEmptyRange(): void
     {
-        $reader = new PagedBinaryReader($this->createBinaryFile('abc'), 4);
+        $reader = PagedBinaryReader::fromFile($this->createBinaryFile('abc'), 4);
 
         $this->assertSame('', $reader->readBytes(1, 0));
     }
@@ -65,7 +65,7 @@ class PagedBinaryReaderTest extends TestCase
      */
     public function testReadBytesRejectsNegativeOffset(): void
     {
-        $reader = new PagedBinaryReader($this->createBinaryFile('abc'), 4);
+        $reader = PagedBinaryReader::fromFile($this->createBinaryFile('abc'), 4);
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('dictionary reading failed.');

@@ -40,7 +40,7 @@ class FileMappedInputStreamTest extends TestCase
      */
     public function testReadsIntValuesSequentially(): void
     {
-        $stream = new FileMappedInputStream($this->createBinaryFile($this->packValues('l', [10, -20, 30])));
+        $stream = FileMappedInputStream::fromFile($this->createBinaryFile($this->packValues('l', [10, -20, 30])));
 
         $this->assertSame(10, $stream->getInt());
         $this->assertSame([-20, 30], $stream->getIntArray(2));
@@ -52,7 +52,7 @@ class FileMappedInputStreamTest extends TestCase
      */
     public function testReadsShortAndCharValuesSequentially(): void
     {
-        $stream = new FileMappedInputStream($this->createBinaryFile(
+        $stream = FileMappedInputStream::fromFile($this->createBinaryFile(
             $this->packValues('s', [-1, 200]) . $this->packValues('S', [65, 65_535]),
         ));
 
@@ -66,7 +66,7 @@ class FileMappedInputStreamTest extends TestCase
      */
     public function testGetStringReadsTwoBytesPerCountWithoutAdvancingNumericCursor(): void
     {
-        $stream = new FileMappedInputStream($this->createBinaryFile('abcd' . $this->packValues('l', [99])));
+        $stream = FileMappedInputStream::fromFile($this->createBinaryFile('abcd' . $this->packValues('l', [99])));
 
         $this->assertSame('abcd', $stream->getString(2));
         $this->assertSame(99, $stream->getInt());
@@ -78,7 +78,7 @@ class FileMappedInputStreamTest extends TestCase
      */
     public function testArrayInstancesReadIntoMemoryWhenReduceIsDisabled(): void
     {
-        $stream = new FileMappedInputStream(
+        $stream = FileMappedInputStream::fromFile(
             $this->createBinaryFile(
                 $this->packValues('l', [10, -20]) . $this->packValues('s', [30, -40])
                     . $this->packValues('S', [50, 60]),
@@ -107,7 +107,7 @@ class FileMappedInputStreamTest extends TestCase
         $fileName = $this->createBinaryFile(
             $this->packValues('l', [10, -20]) . $this->packValues('s', [30, -40]) . $this->packValues('S', [50, 60]),
         );
-        $stream = new FileMappedInputStream($fileName, true);
+        $stream = FileMappedInputStream::fromFile($fileName, true);
 
         $ints = $stream->getIntArrayInstance(2);
         $shorts = $stream->getShortArrayInstance(2);

@@ -24,7 +24,7 @@ class WordDataReader
      */
     public static function fromFile(string $fileName): self
     {
-        return new self(new PagedBinaryReader($fileName));
+        return new self(PagedBinaryReader::fromFile($fileName));
     }
 
     /**

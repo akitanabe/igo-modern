@@ -27,22 +27,32 @@ class PagedBinaryReader
     private string $cachedPage = '';
 
     /**
-     * 読み取り対象ファイルを開き、ページサイズを検証して保持する。
+     * 開かれたファイルハンドルとページサイズを保持する。
+     *
+     * @param resource $file
      */
-    public function __construct(string $fileName, int $pageSize = self::DEFAULT_PAGE_SIZE)
+    public function __construct($file, int $pageSize = self::DEFAULT_PAGE_SIZE)
     {
         if ($pageSize < 1) {
             throw new RuntimeException('dictionary reading failed.');
         }
 
+        $this->file = $file;
+        $this->pageSize = $pageSize;
+    }
+
+    /**
+     * 読み取り対象ファイルを開き、ページ読み込み reader を作る。
+     */
+    public static function fromFile(string $fileName, int $pageSize = self::DEFAULT_PAGE_SIZE): self
+    {
         $file = fopen($fileName, 'rb');
 
         if ($file === false) {
             throw new RuntimeException('dictionary reading failed.');
         }
 
-        $this->file = $file;
-        $this->pageSize = $pageSize;
+        return new self($file, $pageSize);
     }
 
     /**

@@ -18,11 +18,25 @@ class IntMemoryArray implements IntArray
     protected SplFixedArray $array;
 
     /**
-     * reader から必要件数の int 値を読み込み、以後の参照用に保持する。
+     * 読み込み済みの固定長 int 値列を、添字参照用に保持する。
+     *
+     * @param SplFixedArray<int> $array
      */
-    public function __construct(IntArrayReader $reader, int $count)
+    public function __construct(SplFixedArray $array)
     {
-        $this->array = self::fixedArrayFromValues($reader->getIntArray($count));
+        $this->array = $array;
+    }
+
+    /**
+     * reader から必要件数の int 値を読み込み、メモリ配列を作る。
+     */
+    public static function fromReader(object $reader, int $count): self
+    {
+        if (!$reader instanceof IntArrayReader) {
+            throw new RuntimeException('dictionary reading failed.');
+        }
+
+        return new self(self::fixedArrayFromValues($reader->getIntArray($count)));
     }
 
     /**

@@ -31,7 +31,7 @@ class Searcher
      */
     public static function fromFile(string $filePath): self
     {
-        $stream = new FileMappedInputStream($filePath);
+        $stream = FileMappedInputStream::fromFile($filePath);
 
         try {
             $nodeSize = $stream->getInt();

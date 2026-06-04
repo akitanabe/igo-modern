@@ -20,23 +20,38 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
     /** @var resource バイナリ辞書を順次読むためのファイルハンドルを保持する。 */
     private $file;
 
+    /** 読み取り対象ファイル名を、サイズ取得と dynamic 配列生成のために保持する。 */
+    private string $fileName;
+
     /** 配列インスタンスに渡す開始位置を追跡するため、数値読み取りのカーソルを保持する。 */
     private int $cur = 0;
 
     /**
-     * 読み取り対象ファイルを開き、配列インスタンスの読み取り方式を保持する。
+     * 開かれたファイルハンドルと配列インスタンスの読み取り方式を保持する。
+     *
+     * @param resource $file
      */
     public function __construct(
-        private string $fileName,
+        $file,
+        string $fileName,
         private bool $reduce = true,
     ) {
-        $file = fopen($this->fileName, 'rb');
+        $this->file = $file;
+        $this->fileName = $fileName;
+    }
+
+    /**
+     * 読み取り対象ファイルを開き、順次読み込み stream を作る。
+     */
+    public static function fromFile(string $fileName, bool $reduce = true): self
+    {
+        $file = fopen($fileName, 'rb');
 
         if ($file === false) {
             throw new RuntimeException('dictionary reading failed.');
         }
 
-        $this->file = $file;
+        return new self($file, $fileName, $reduce);
     }
 
     /**
@@ -67,13 +82,13 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
     public function getIntArrayInstance(int $count): IntArray
     {
         if ($this->reduce) {
-            $array = new IntDynamicArray($this->fileName, $this->cur);
+            $array = IntDynamicArray::fromFile($this->fileName, $this->cur);
             $this->skipBytes($count * 4);
 
             return $array;
         }
 
-        return new IntMemoryArray($this, $count);
+        return IntMemoryArray::fromReader($this, $count);
     }
 
     /**
@@ -83,7 +98,7 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
      */
     public static function getIntArrayFromFile(string $fileName): array
     {
-        $stream = new self($fileName);
+        $stream = self::fromFile($fileName);
 
         try {
             return $stream->getIntArray(intdiv($stream->size(), 4));
@@ -120,13 +135,13 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
     public function getShortArrayInstance(int $count): ShortArray
     {
         if ($this->reduce) {
-            $array = new ShortDynamicArray($this->fileName, $this->cur);
+            $array = ShortDynamicArray::fromFile($this->fileName, $this->cur);
             $this->skipBytes($count * 2);
 
             return $array;
         }
 
-        return new ShortMemoryArray($this, $count);
+        return ShortMemoryArray::fromReader($this, $count);
     }
 
     /**
@@ -135,13 +150,13 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
     public function getCharArrayInstance(int $count): CharArray
     {
         if ($this->reduce) {
-            $array = new CharDynamicArray($this->fileName, $this->cur);
+            $array = CharDynamicArray::fromFile($this->fileName, $this->cur);
             $this->skipBytes($count * 2);
 
             return $array;
         }
 
-        return new CharMemoryArray($this, $count);
+        return CharMemoryArray::fromReader($this, $count);
     }
 
     /**
@@ -169,7 +184,7 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
      */
     public static function getStringFromFile(string $fileName): string
     {
-        $stream = new self($fileName);
+        $stream = self::fromFile($fileName);
 
         try {
             return $stream->getString(intdiv($stream->size(), 2));

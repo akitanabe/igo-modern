@@ -12,17 +12,20 @@ use RuntimeException;
  */
 class IntDynamicArray implements IntArray
 {
-    /** バイナリ辞書をページ単位で読み、近接アクセスの再読み込みを減らす。 */
-    protected PagedBinaryReader $reader;
-
     /**
-     * バイナリ辞書内の配列開始位置を保持し、読み取り用ファイルを開く。
+     * バイナリ辞書内の配列開始位置とページ reader を保持する。
      */
     public function __construct(
-        protected string $fileName,
+        protected PagedBinaryReader $reader,
         protected int $start,
-    ) {
-        $this->reader = new PagedBinaryReader($this->fileName);
+    ) {}
+
+    /**
+     * 読み取り対象ファイルを開き、指定 offset から読む dynamic 配列を作る。
+     */
+    public static function fromFile(string $fileName, int $start): self
+    {
+        return new self(PagedBinaryReader::fromFile($fileName), $start);
     }
 
     /**
