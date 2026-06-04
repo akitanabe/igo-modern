@@ -38,7 +38,7 @@ class ParseBenchmarkCommandTest extends TestCase
     }
 
     /**
-     * 既定の測定回数が 1 回で、行単位 throughput と保存ファイルに同じレポートが出ることを確認する。
+     * 既定の測定回数が統計値を比較できる回数で、行単位 throughput と保存ファイルに同じレポートが出ることを確認する。
      */
     public function testExecuteWritesReportWithLineThroughputToOutputFile(): void
     {
@@ -54,7 +54,7 @@ class ParseBenchmarkCommandTest extends TestCase
         ]);
 
         $this->assertSame(0, $statusCode);
-        $this->assertStringContainsString('Iterations: 1 measured, 0 warmup', $tester->getDisplay());
+        $this->assertStringContainsString('Iterations: 3 measured, 0 warmup', $tester->getDisplay());
         $this->assertStringContainsString(
             'Throughput: 400.0 chars/sec, 100.0 lines/sec, 50.0 morphemes/sec',
             $tester->getDisplay(),

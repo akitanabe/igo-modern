@@ -9,12 +9,14 @@ namespace IgoModern\Benchmark;
  */
 class ParseBenchmarkConfig
 {
+    public const DEFAULT_ITERATIONS = 3;
+
     /**
      * 辞書、反復回数、入力ソースを保持し、runner が同じ条件で測定できるようにする。
      */
     public function __construct(
         public string $dictionary,
-        public int $iterations = 1,
+        public int $iterations = self::DEFAULT_ITERATIONS,
         public int $warmup = 0,
         public string $sample = 'mixed',
         public ?string $text = null,

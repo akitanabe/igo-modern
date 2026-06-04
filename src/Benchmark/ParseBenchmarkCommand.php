@@ -38,7 +38,13 @@ class ParseBenchmarkCommand extends Command
         $this
             ->setDescription('Benchmark morphological parsing with an Igo dictionary.')
             ->addArgument('dictionary', InputArgument::REQUIRED, 'Dictionary directory.')
-            ->addOption('iterations', null, InputOption::VALUE_REQUIRED, 'Measured parse iterations.', '1')
+            ->addOption(
+                'iterations',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Measured parse iterations.',
+                (string) ParseBenchmarkConfig::DEFAULT_ITERATIONS,
+            )
             ->addOption('warmup', null, InputOption::VALUE_REQUIRED, 'Warmup parse iterations.', '0')
             ->addOption(
                 'sample',
