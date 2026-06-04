@@ -162,6 +162,22 @@ class WordDictionaryBuilderTest extends TestCase
     }
 
     /**
+     * WordDictionaryBuilder の API 境界でも、CSV parser に渡せない delimiter を辞書生成エラーとして扱う。
+     */
+    public function testBuildFailsWhenDelimiterHasMultipleCharacters(): void
+    {
+        $inputDirectory = $this->createTemporaryDirectory('igo-word-in-');
+        $outputDirectory = $this->createMissingTemporaryDirectory('igo-word-out-');
+        $this->writeTextFile($inputDirectory . '/char.def', "DEFAULT 1 0 1\nSPACE 0 1 2\n0x0020 SPACE\n");
+        $this->writeTextFile($inputDirectory . '/unk.def', "DEFAULT,1,1,1,DEFAULT\nSPACE,1,1,1,SPACE\n");
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('delimiter must be a single-character string.');
+
+        (new WordDictionaryBuilder())->build($outputDirectory, $inputDirectory, 'UTF-8', '||');
+    }
+
+    /**
      * 指定 prefix の一時ディレクトリを作成し、後片付け対象として記録する。
      */
     private function createTemporaryDirectory(string $prefix): string

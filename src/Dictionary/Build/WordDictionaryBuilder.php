@@ -16,6 +16,8 @@ class WordDictionaryBuilder implements DictionaryBuildStep
      */
     public function build(string $outputDirectory, string $inputDirectory, string $encoding, string $delimiter): void
     {
+        $this->assertDelimiter($delimiter);
+
         $entries = $this->readEntries($inputDirectory, $encoding, $delimiter);
         $keys = $this->trieKeys($inputDirectory, $encoding, $entries);
         $groupedEntries = $this->entriesByTrieId($entries, $keys);
@@ -23,6 +25,16 @@ class WordDictionaryBuilder implements DictionaryBuildStep
         $this->ensureOutputDirectory($outputDirectory);
         (new DoubleArrayTrieBuilder())->build($keys, $outputDirectory . '/word2id');
         $this->writeWordFiles($outputDirectory, $groupedEntries, count($keys));
+    }
+
+    /**
+     * CSV parser の契約に合わせ、辞書生成 API では 1 文字 delimiter だけを受け入れる。
+     */
+    private function assertDelimiter(string $delimiter): void
+    {
+        if (strlen($delimiter) !== 1) {
+            throw new RuntimeException('delimiter must be a single-character string.');
+        }
     }
 
     /**
