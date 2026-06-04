@@ -177,16 +177,13 @@ class Tagger
      * 入力文字コード列からラティスを構築し、先頭から読める最小コスト経路へ反転して返す。
      *
      * @param list<int> $text
-     * @return list<ViterbiNode>
+     * @return array<int, ViterbiNode>
      */
     private function parseImpl(array $text): array
     {
         $textLength = count($text);
-        $nodes = [self::$bosNodes];
-
-        for ($i = 1; $i <= $textLength; $i++) {
-            $nodes[] = [];
-        }
+        $nodes = array_fill(0, $textLength + 1, []);
+        $nodes[0] = self::$bosNodes;
 
         $callback = new MakeLattice($this, $nodes);
 
@@ -209,7 +206,7 @@ class Tagger
     /**
      * 終端側から prev で連なった経路を、先頭から走査できる配列へ変換する。
      *
-     * @return list<ViterbiNode>
+     * @return array<int, ViterbiNode>
      */
     private function reversePath(?ViterbiNode $node): array
     {
@@ -220,7 +217,23 @@ class Tagger
             $node = $node->prev;
         }
 
-        return array_reverse($result);
+        $this->reverseNodesInPlace($result);
+
+        return $result;
+    }
+
+    /**
+     * list の添字連続性を保ったまま、ViterbiNode の順序だけを反転する。
+     *
+     * @param array<int, ViterbiNode> $nodes
+     */
+    private function reverseNodesInPlace(array &$nodes): void
+    {
+        for ($left = 0, $right = count($nodes) - 1; $left < $right; $left++, $right--) {
+            $temporary = $nodes[$left];
+            $nodes[$left] = $nodes[$right];
+            $nodes[$right] = $temporary;
+        }
     }
 
     /**
