@@ -54,14 +54,14 @@ class WordDictionaryBuilderTest extends TestCase
     {
         $inputDirectory = $this->createTemporaryDirectory('igo-word-in-');
         $outputDirectory = $this->createTemporaryDirectory('igo-word-out-');
-        $this->writeTextFile($inputDirectory . '/char.def', "DEFAULT 1 0 1\n" . "SPACE 0 1 2\n" . "0x0020 SPACE\n");
+        $this->writeTextFile($inputDirectory . '/char.def', "DEFAULT 1 0 1\nSPACE 0 1 2\n0x0020 SPACE\n");
         $this->writeTextFile(
             $inputDirectory . '/unk.def',
-            "DEFAULT,5,6,70,DEFAULT_FEATURE\n" . "SPACE,7,8,90,SPACE_FEATURE\n",
+            "DEFAULT,5,6,70,DEFAULT_FEATURE\nSPACE,7,8,90,SPACE_FEATURE\n",
         );
         $this->writeTextFile(
             $inputDirectory . '/noun.csv',
-            "猫,1,2,300,名詞,一般\n" . "猫,3,4,-50,名詞,固有\n" . "猫語,9,10,400,名詞,複合\n",
+            "猫,1,2,300,名詞,一般\n猫,3,4,-50,名詞,固有\n猫語,9,10,400,名詞,複合\n",
         );
 
         (new WordDictionaryBuilder())->build($outputDirectory, $inputDirectory, 'UTF-8', ',');
