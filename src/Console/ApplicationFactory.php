@@ -17,8 +17,8 @@ class ApplicationFactory
     public function create(): Application
     {
         $application = new Application('igo-modern');
-        $application->add(new ParseCommand());
-        $application->add(new BuildDicCommand());
+        $application->add(ParseCommand::createDefault());
+        $application->add(BuildDicCommand::createDefault());
         $application->setDefaultCommand('parse');
 
         return $application;

@@ -14,15 +14,20 @@ class CharCategoryBuilder implements DictionaryBuildStep
     /** UCS2 の全 code unit 数を code2category の固定サイズとして保持する。 */
     private const UCS2_CODE_COUNT = 0x1_0000;
 
-    /** カテゴリ名から char.category に保存する未知語 trie ID を解決する。 */
-    private CategoryIdResolver $categoryIdResolver;
+    /**
+     * カテゴリ名を未知語 trie ID へ解決する依存を必須で保持し、コンストラクタでは I/O を発生させない。
+     */
+    public function __construct(
+        /** カテゴリ名から char.category に保存する未知語 trie ID を解決する。 */
+        private CategoryIdResolver $categoryIdResolver,
+    ) {}
 
     /**
-     * カテゴリ名を未知語 trie ID へ解決する依存を保持し、コンストラクタでは I/O を発生させない。
+     * 通常利用向けに word2id を参照する標準 resolver を注入した builder を組み立てる。
      */
-    public function __construct(?CategoryIdResolver $categoryIdResolver = null)
+    public static function createDefault(): self
     {
-        $this->categoryIdResolver = $categoryIdResolver ?? new Word2IdCategoryIdResolver();
+        return new self(new Word2IdCategoryIdResolver());
     }
 
     /**

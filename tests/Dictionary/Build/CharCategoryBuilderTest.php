@@ -8,6 +8,7 @@ use IgoModern\Dictionary\Build\CategoryIdResolver;
 use IgoModern\Dictionary\Build\CharCategoryBuilder;
 use IgoModern\Dictionary\CharCategory;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 use RuntimeException;
 
 /**
@@ -17,6 +18,31 @@ class CharCategoryBuilderTest extends TestCase
 {
     /** @var list<string> テスト中に作成した一時ディレクトリの削除対象を保持する。 */
     private array $temporaryDirectories = [];
+
+    /**
+     * CategoryIdResolver は必須依存として扱い、null による標準 resolver 生成を constructor に隠さないことを確認する。
+     */
+    public function testConstructorRequiresCategoryIdResolver(): void
+    {
+        $constructor = (new ReflectionClass(CharCategoryBuilder::class))->getConstructor();
+        $this->assertNotNull($constructor);
+
+        $categoryIdResolver = $constructor->getParameters()[0];
+
+        $this->assertSame('categoryIdResolver', $categoryIdResolver->getName());
+        $this->assertFalse($categoryIdResolver->allowsNull());
+        $this->assertFalse($categoryIdResolver->isDefaultValueAvailable());
+    }
+
+    /**
+     * 通常利用向けの標準 CategoryIdResolver は factory メソッドから組み立てられることを確認する。
+     */
+    public function testCreateDefaultReturnsCharCategoryBuilder(): void
+    {
+        $builder = CharCategoryBuilder::createDefault();
+
+        $this->assertInstanceOf(CharCategoryBuilder::class, $builder);
+    }
 
     /**
      * テスト用に作成した入力・出力ディレクトリとファイルを削除し、状態を戻す。

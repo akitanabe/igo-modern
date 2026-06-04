@@ -7,6 +7,7 @@ namespace IgoModern\Tests\Console;
 use IgoModern\Console\BuildDicCommand;
 use IgoModern\Dictionary\Build\DictionaryBuilder;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 use RuntimeException;
 use Symfony\Component\Console\Tester\CommandTester;
 
@@ -15,6 +16,32 @@ use Symfony\Component\Console\Tester\CommandTester;
  */
 class BuildDicCommandTest extends TestCase
 {
+    /**
+     * DictionaryBuilder factory は必須依存として扱い、null による標準 builder 生成を constructor に隠さないことを確認する。
+     */
+    public function testConstructorRequiresBuilderFactory(): void
+    {
+        $constructor = (new ReflectionClass(BuildDicCommand::class))->getConstructor();
+        $this->assertNotNull($constructor);
+
+        $builderFactory = $constructor->getParameters()[0];
+
+        $this->assertSame('builderFactory', $builderFactory->getName());
+        $this->assertFalse($builderFactory->allowsNull());
+        $this->assertFalse($builderFactory->isDefaultValueAvailable());
+    }
+
+    /**
+     * 通常利用向けの標準 DictionaryBuilder factory は factory メソッドから組み立てられることを確認する。
+     */
+    public function testCreateDefaultReturnsBuildDicCommand(): void
+    {
+        $command = BuildDicCommand::createDefault();
+
+        $this->assertInstanceOf(BuildDicCommand::class, $command);
+        $this->assertSame('build-dic', $command->getName());
+    }
+
     /**
      * 必須引数と任意 delimiter を builder に渡し、成功終了することを確認する。
      */

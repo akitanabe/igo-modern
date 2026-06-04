@@ -18,14 +18,21 @@ class ParseBenchmarkRunner
     private $parserFactory;
 
     /**
-     * 解析器生成を差し替え可能にし、CLI とテストで同じ測定処理を使えるようにする。
+     * 解析器生成を必須依存として受け取り、CLI とテストで同じ測定処理を使えるようにする。
      *
-     * @param callable(string): Parser|null $parserFactory
+     * @param callable(string): Parser $parserFactory
      */
-    public function __construct(?callable $parserFactory = null)
+    public function __construct(callable $parserFactory)
     {
-        $this->parserFactory =
-            $parserFactory ?? static fn(string $dictionary): Parser => Igo::fromDataDir($dictionary, 'UTF-8');
+        $this->parserFactory = $parserFactory;
+    }
+
+    /**
+     * 通常利用向けに UTF-8 出力の Igo parser を生成する標準 runner を組み立てる。
+     */
+    public static function createDefault(): self
+    {
+        return new self(static fn(string $dictionary): Parser => Igo::fromDataDir($dictionary, 'UTF-8'));
     }
 
     /**

@@ -9,7 +9,10 @@ use IgoModern\Benchmark\ParseBenchmarkCommand;
 use IgoModern\Benchmark\ParseBenchmarkConfig;
 use IgoModern\Benchmark\ParseBenchmarkResult;
 use IgoModern\Benchmark\ParseBenchmarkRunner;
+use IgoModern\Parser;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
+use RuntimeException;
 use Symfony\Component\Console\Tester\CommandTester;
 
 /**
@@ -19,6 +22,32 @@ class ParseBenchmarkCommandTest extends TestCase
 {
     /** @var list<string> テスト中に作成した一時パスの削除対象を保持する。 */
     private array $temporaryPaths = [];
+
+    /**
+     * Runner は必須依存として扱い、null による暗黙生成を constructor に持ち込まないことを確認する。
+     */
+    public function testConstructorRequiresRunner(): void
+    {
+        $constructor = (new ReflectionClass(ParseBenchmarkCommand::class))->getConstructor();
+        $this->assertNotNull($constructor);
+
+        $runner = $constructor->getParameters()[0];
+
+        $this->assertSame('runner', $runner->getName());
+        $this->assertFalse($runner->allowsNull());
+        $this->assertFalse($runner->isDefaultValueAvailable());
+    }
+
+    /**
+     * 通常利用向けの標準 runner 付きコマンドは factory メソッドから作れることを確認する。
+     */
+    public function testCreateDefaultReturnsCommandWithStandardRunner(): void
+    {
+        $command = ParseBenchmarkCommand::createDefault();
+
+        $this->assertInstanceOf(ParseBenchmarkCommand::class, $command);
+        $this->assertSame('parse', $command->getName());
+    }
 
     /**
      * テスト用の出力ファイルとディレクトリを削除し、ファイルシステム上の状態を戻す。
@@ -127,6 +156,16 @@ class ParseBenchmarkCommandTest extends TestCase
  */
 class FixedParseBenchmarkRunner extends ParseBenchmarkRunner
 {
+    /**
+     * 親 constructor の必須 Parser factory を満たしつつ、run の固定結果だけをテスト対象にする。
+     */
+    public function __construct()
+    {
+        parent::__construct(static function (): Parser {
+            throw new RuntimeException('FixedParseBenchmarkRunner does not create parsers.');
+        });
+    }
+
     /**
      * 1 秒あたりの文字・行・形態素 throughput を検証しやすい固定結果を返す。
      */

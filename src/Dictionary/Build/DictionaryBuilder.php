@@ -23,7 +23,7 @@ class DictionaryBuilder
      */
     public static function standard(): self
     {
-        return new self(new WordDictionaryBuilder(), new MatrixBuilder(), new CharCategoryBuilder());
+        return new self(new WordDictionaryBuilder(), new MatrixBuilder(), CharCategoryBuilder::createDefault());
     }
 
     /**

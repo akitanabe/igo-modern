@@ -8,6 +8,7 @@ use IgoModern\Console\ParseCommand;
 use IgoModern\Morpheme;
 use IgoModern\Parser;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 use Symfony\Component\Console\Tester\CommandTester;
 
 /**
@@ -17,6 +18,32 @@ class ParseCommandTest extends TestCase
 {
     /** 環境変数の変更前状態を保持し、テスト間の副作用を避ける。 */
     private false|string $originalOutputEncoding;
+
+    /**
+     * Parser factory は必須依存として扱い、null による標準 Parser 生成を constructor に隠さないことを確認する。
+     */
+    public function testConstructorRequiresParserFactory(): void
+    {
+        $constructor = (new ReflectionClass(ParseCommand::class))->getConstructor();
+        $this->assertNotNull($constructor);
+
+        $parserFactory = $constructor->getParameters()[0];
+
+        $this->assertSame('parserFactory', $parserFactory->getName());
+        $this->assertFalse($parserFactory->allowsNull());
+        $this->assertFalse($parserFactory->isDefaultValueAvailable());
+    }
+
+    /**
+     * 通常利用向けの標準 Parser factory は factory メソッドから組み立てられることを確認する。
+     */
+    public function testCreateDefaultReturnsParseCommand(): void
+    {
+        $command = ParseCommand::createDefault();
+
+        $this->assertInstanceOf(ParseCommand::class, $command);
+        $this->assertSame('parse', $command->getName());
+    }
 
     /**
      * 旧 CLI 互換の出力エンコーディング環境変数を退避し、各テストを独立させる。

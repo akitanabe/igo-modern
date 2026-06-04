@@ -17,7 +17,7 @@ class BenchmarkApplicationFactory
     public function create(): Application
     {
         $application = new Application('igo-modern-bench');
-        $application->add(new ParseBenchmarkCommand());
+        $application->add(ParseBenchmarkCommand::createDefault());
 
         return $application;
     }

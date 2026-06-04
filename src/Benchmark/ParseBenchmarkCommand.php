@@ -22,12 +22,20 @@ class ParseBenchmarkCommand extends Command
     protected static $defaultName = 'parse';
 
     /**
-     * ベンチマーク実行器を受け取り、CLI から測定処理を呼び出せるようにする。
+     * ベンチマーク実行器を必須依存として受け取り、CLI から測定処理を呼び出せるようにする。
      */
     public function __construct(
-        private ?ParseBenchmarkRunner $runner = null,
+        private ParseBenchmarkRunner $runner,
     ) {
         parent::__construct();
+    }
+
+    /**
+     * 通常利用向けに標準 runner を注入した parse ベンチマークコマンドを組み立てる。
+     */
+    public static function createDefault(): self
+    {
+        return new self(ParseBenchmarkRunner::createDefault());
     }
 
     /**
@@ -81,7 +89,7 @@ class ParseBenchmarkCommand extends Command
                 throw new InvalidArgumentException(sprintf('dictionary directory not found: %s', $config->dictionary));
             }
 
-            $result = ($this->runner ?? new ParseBenchmarkRunner())->run($config);
+            $result = $this->runner->run($config);
             $report = $this->formatReport($result);
             $output->write($report);
             $this->writeReportFile($input, $report);

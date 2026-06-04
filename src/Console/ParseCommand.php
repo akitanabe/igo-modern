@@ -25,20 +25,25 @@ class ParseCommand extends Command
     private $parserFactory;
 
     /**
-     * 解析器ファクトリを受け取り、未指定時は Igo を生成する標準ファクトリを使う。
+     * 解析器ファクトリを必須依存として受け取り、解析器生成の差し替えを明示する。
      *
-     * @param callable(string, ?string): Parser|null $parserFactory
+     * @param callable(string, ?string): Parser $parserFactory
      */
-    public function __construct(?callable $parserFactory = null)
+    public function __construct(callable $parserFactory)
     {
         parent::__construct();
 
-        $this->parserFactory =
-            $parserFactory
-            ?? static fn(string $dataDir, ?string $outputEncoding): Parser => Igo::fromDataDir(
-                $dataDir,
-                $outputEncoding,
-            );
+        $this->parserFactory = $parserFactory;
+    }
+
+    /**
+     * 通常利用向けに Igo を生成する標準 Parser factory を注入したコマンドを組み立てる。
+     */
+    public static function createDefault(): self
+    {
+        return new self(
+            static fn(string $dataDir, ?string $outputEncoding): Parser => Igo::fromDataDir($dataDir, $outputEncoding),
+        );
     }
 
     /**

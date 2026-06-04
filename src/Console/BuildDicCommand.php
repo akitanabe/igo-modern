@@ -23,15 +23,23 @@ class BuildDicCommand extends Command
     private $builderFactory;
 
     /**
-     * 辞書生成器ファクトリを受け取り、未指定時は標準構成を遅延生成する。
+     * 辞書生成器ファクトリを必須依存として受け取り、標準構成とテスト差し替えを明示する。
      *
-     * @param callable(): DictionaryBuilder|null $builderFactory
+     * @param callable(): DictionaryBuilder $builderFactory
      */
-    public function __construct(?callable $builderFactory = null)
+    public function __construct(callable $builderFactory)
     {
         parent::__construct();
 
-        $this->builderFactory = $builderFactory ?? static fn(): DictionaryBuilder => DictionaryBuilder::standard();
+        $this->builderFactory = $builderFactory;
+    }
+
+    /**
+     * 通常利用向けに標準 DictionaryBuilder factory を注入したコマンドを組み立てる。
+     */
+    public static function createDefault(): self
+    {
+        return new self(static fn(): DictionaryBuilder => DictionaryBuilder::standard());
     }
 
     /**
