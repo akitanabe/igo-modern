@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace IgoModern\Tests\Dictionary;
 
 use IgoModern\Analysis\ViterbiNode;
+use IgoModern\Binary\IntDynamicArray;
 use IgoModern\Dictionary\WordDic;
 use IgoModern\Dictionary\WordDicCallback;
 use PHPUnit\Framework\TestCase;
+use ReflectionProperty;
 
 /**
  * WordDic が単語辞書ファイル群から候補ノードと素性データを復元する挙動を検証するテスト。
@@ -86,6 +88,18 @@ class WordDicTest extends TestCase
         $this->assertSame($this->packValues('S', [1000, 1001]), $wordDic->wordData(0));
         $this->assertSame($this->packValues('S', [2000]), $wordDic->wordData(1));
         $this->assertSame($this->packValues('S', [3000, 3001, 3002]), $wordDic->wordData(2));
+    }
+
+    /**
+     * WordDic が trie ID から単語 ID 範囲を引く indices を PHP 配列ではなく dynamic reader として保持することを確認する。
+     */
+    public function testWordRangeIndicesAreReadDynamically(): void
+    {
+        $wordDic = new WordDic($this->createDictionaryDirectory());
+        $indicesProperty = new ReflectionProperty(WordDic::class, 'indices');
+        $indicesProperty->setAccessible(true);
+
+        $this->assertInstanceOf(IntDynamicArray::class, $indicesProperty->getValue($wordDic));
     }
 
     /**

@@ -21,8 +21,8 @@ class WordDic
     /** word.dat に格納された UTF-16 相当の素性バイト列を必要範囲だけ読む。 */
     private WordDataReader $data;
 
-    /** @var list<int> trie ID から単語 ID 範囲へ変換する開始オフセット列を保持する。 */
-    private array $indices;
+    /** trie ID から単語 ID 範囲へ変換する開始オフセット列を必要な添字だけ読む。 */
+    private IntArray $indices;
 
     /** 単語 ID ごとの単語コストを参照する。 */
     private ShortArray $costs;
@@ -43,7 +43,7 @@ class WordDic
     {
         $this->trie = new Searcher($dataDir . '/word2id');
         $this->data = new WordDataReader($dataDir . '/word.dat');
-        $this->indices = FileMappedInputStream::getIntArrayFromFile($dataDir . '/word.ary.idx');
+        $this->indices = $this->readIndices($dataDir . '/word.ary.idx');
 
         $stream = new FileMappedInputStream($dataDir . '/word.inf');
 
@@ -92,9 +92,9 @@ class WordDic
      */
     public function callWordRange(int $trieId, int $start, int $wordLength, bool $isSpace, WordDicCallback $fn): void
     {
-        $end = $this->indices[$trieId + 1];
+        $end = $this->indices->get($trieId + 1);
 
-        for ($wordId = $this->indices[$trieId]; $wordId < $end; $wordId++) {
+        for ($wordId = $this->indices->get($trieId); $wordId < $end; $wordId++) {
             $fn->call(
                 new ViterbiNode(
                     $wordId,
@@ -106,6 +106,20 @@ class WordDic
                     $isSpace,
                 ),
             );
+        }
+    }
+
+    /**
+     * word.ary.idx 全体を PHP 配列へ展開せず、trie ID 範囲の参照に必要な int 配列 reader を作る。
+     */
+    private function readIndices(string $fileName): IntArray
+    {
+        $stream = new FileMappedInputStream($fileName);
+
+        try {
+            return $stream->getIntArrayInstance(intdiv($stream->size(), 4));
+        } finally {
+            $stream->close();
         }
     }
 }
