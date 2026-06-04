@@ -18,6 +18,7 @@ class ApplicationFactory
     {
         $application = new Application('igo-modern');
         $application->add(new ParseCommand());
+        $application->add(new BuildDicCommand());
         $application->setDefaultCommand('parse', true);
 
         return $application;
