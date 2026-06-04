@@ -1,5 +1,39 @@
 # 実行時辞書メモリ削減計画
 
+## ステータス
+
+この計画の file-backed reader による runtime 辞書メモリ削減フェーズは完了しました。
+
+採用した変更は次のとおりです。
+
+- `word.dat` を `WordDataReader` で必要範囲だけ読む。
+- `word.ary.idx` を `IntArray` 経由の dynamic read にする。
+- dynamic array の読み込みを `PagedBinaryReader` の直近 1 ページキャッシュ経由にする。
+- `word2id` tail を `CharArray` 経由の dynamic read にする。
+- reduce=false 用 memory array を `SplFixedArray` に詰め替える。
+- `Tagger` 周辺の追加コピーを減らす。
+
+採用しなかった変更は次のとおりです。
+
+- ラティスの `SplFixedArray` 化は、メモリ削減効果が見えず速度面も安定しなかったため見送り。
+- `fopen()` / `fread()` から `SplFileObject` への置換は、マイクロベンチで遅くなりやすく、メモリ削減効果も期待しにくいため見送り。
+- `PagedBinaryReader` の既定ページサイズ変更は、8 KiB が最も安定していたため見送り。
+
+SQLite 辞書コンテナ化はこの計画には含めず、別計画として検討します。
+
+### 実測結果
+
+`dist/igo-dic` と `bench/corpus/search.txt` を使った確認では、計画開始時におよそ 81 MiB だった peak memory が、完了時点では 16 MiB まで下がりました。削減量は約 65 MiB、削減率は約 80% です。
+
+完了時点の代表値は次のとおりです。
+
+| 入力 | 文字数 | 形態素数 | median | p95 | peak memory |
+|---|---:|---:|---:|---:|---:|
+| `--sample=mixed` | 72 | 41 | 5.720 ms | 6.553 ms | 4.00 MiB |
+| `--file=bench/corpus/search.txt` | 27,532 | 11,037 | 2564.524 ms | 2599.154 ms | 16.00 MiB |
+
+`search.txt` の出力形態素は、改善前後で 11,037 行の byte 一致を確認しました。ページサイズは 4 KiB、8 KiB、16 KiB、32 KiB、64 KiB を比較し、速度と peak memory の安定性から既定値 8 KiB を維持しました。
+
 ## 目的
 
 検索処理で Igo Modern を利用する場合、解析器そのものの処理時間は実用圏内に見える一方で、辞書ロード後の PHP プロセスごとのメモリ使用量が集中時の制約になりやすいです。
@@ -182,13 +216,13 @@ php -d xdebug.mode=off bin/bench parse dist/igo-dic --sample=mixed
 php -d xdebug.mode=off bin/bench parse dist/igo-dic --file=bench/corpus/search.txt --output=bench/results/search-{datetime}.txt --morpheme-output=bench/results/search-{datetime}.morphemes.txt
 ```
 
-## 想定される導入順
+## 導入結果
 
-1. `word.dat` を `WordDataReader` へ置き換え、メモリ削減量と速度低下を測る。
-2. `word.ary.idx` を `IntDynamicArray` または `IntPagedArray` へ置き換える。
-3. `word2id` tail の PHP array 化を避ける。
-4. 必要に応じて `PagedBinaryReader` を導入し、既存 dynamic array の syscall 回数を減らす。
-5. 必要に応じて SQLite 辞書コンテナを試作する。
+1. 完了: `word.dat` を `WordDataReader` へ置き換え、メモリ削減量と速度低下を測る。
+2. 完了: `word.ary.idx` を `IntDynamicArray` へ置き換える。
+3. 完了: `word2id` tail の PHP array 化を避ける。
+4. 完了: `PagedBinaryReader` を導入し、既存 dynamic array の syscall 回数を減らす。
+5. 別計画: SQLite 辞書コンテナを試作する。
 
 この順序は、変更範囲が小さく効果を測りやすいものから進めるためのものです。実装段階では、各ステップで Red、Green、Refactor の流れを取り、既存の解析結果互換性を壊さないことを先にテストで固定します。
 
@@ -208,5 +242,5 @@ php -d xdebug.mode=off bin/bench parse dist/igo-dic --file=bench/corpus/search.t
 - 検索用途では `Morpheme::feature` 全体が必要か、表層形・原形・品詞などの検索 token 生成に必要な部分だけでよいか。
 - `RuntimeOptions` の内部設定をどこまで細分化するか。
 - `FileMappedInputStream` の `reduce` オプションを `RuntimeOptions` の配下で公開設定として扱うか。
-- ページサイズの既定値を 8 KiB から変更する必要があるか。
-- SQLite を採用する場合、PDO と ext-sqlite3 のどちらを reader の基盤にするか。
+- 解決済み: ページサイズの既定値は 8 KiB のままにする。
+- 別計画: SQLite を採用する場合、PDO と ext-sqlite3 のどちらを reader の基盤にするか。
