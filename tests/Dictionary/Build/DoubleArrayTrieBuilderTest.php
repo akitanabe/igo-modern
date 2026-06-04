@@ -67,6 +67,29 @@ class DoubleArrayTrieBuilderTest extends TestCase
     }
 
     /**
+     * 分岐のない長い suffix は tail 領域へ圧縮し、Searcher 互換のまま読めることを確認する。
+     */
+    public function testBuildCompressesSinglePathSuffixIntoTail(): void
+    {
+        $fileName = $this->createTemporaryFile();
+        (new DoubleArrayTrieBuilder())->build([
+            "\002KANJI" => 0,
+            '東京' => 1,
+        ], $fileName);
+
+        $searcher = new Searcher($fileName);
+        $category = new CapturingPrefixCallback();
+        $place = new CapturingPrefixCallback();
+
+        $searcher->eachCommonPrefix($this->utf16CodeUnits("\002KANJI"), 0, $category);
+        $searcher->eachCommonPrefix($this->utf16CodeUnits('東京都'), 0, $place);
+
+        $this->assertGreaterThan(0, $this->tailSize($fileName));
+        $this->assertSame([['start' => 0, 'offset' => 6, 'id' => 0]], $category->matches);
+        $this->assertSame([['start' => 0, 'offset' => 2, 'id' => 1]], $place->matches);
+    }
+
+    /**
      * 空のキーは Searcher の空文字一致と衝突するため、生成前に拒否することを確認する。
      */
     public function testBuildFailsWhenKeyIsEmpty(): void
@@ -98,6 +121,19 @@ class DoubleArrayTrieBuilderTest extends TestCase
         $this->temporaryFiles[] = $fileName;
 
         return $fileName;
+    }
+
+    /**
+     * word2id ヘッダから tail 領域の code unit 数を取り出す。
+     */
+    private function tailSize(string $fileName): int
+    {
+        $contents = file_get_contents($fileName);
+        $this->assertIsString($contents);
+        $header = unpack('lnodeSize/lkeySetSize/ltailSize', $contents);
+        $this->assertIsArray($header);
+
+        return $header['tailSize'];
     }
 
     /**

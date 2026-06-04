@@ -12,7 +12,7 @@ use RuntimeException;
 class DoubleArrayTrieBuilder
 {
     /**
-     * キー集合を tail 圧縮なしの double-array trie に配置し、word2id バイナリとして書き込む。
+     * キー集合を tail 圧縮付きの double-array trie に配置し、word2id バイナリとして書き込む。
      *
      * @param array<string, int> $keys
      */
@@ -27,11 +27,16 @@ class DoubleArrayTrieBuilder
         $base = array_fill(0, $nodeSize, 0);
         $chck = array_fill(0, $nodeSize, 0);
         $base[0] = $this->assignedBase($root);
-        [$base, $chck] = $this->emitNode($root, $base, $chck);
+        $begs = array_fill(0, count($keys), 0);
+        $lens = array_fill(0, count($keys), 0);
+        $tail = [];
+        [$base, $chck, $begs, $lens, $tail] = $this->emitNode($root, $base, $chck, $begs, $lens, $tail);
         $this->writeBinaryFile($fileName, $this->dictionaryBinary(
             array_values($base),
             array_values($chck),
-            count($keys),
+            $begs,
+            $lens,
+            $tail,
         ));
     }
 
@@ -101,6 +106,10 @@ class DoubleArrayTrieBuilder
         }
 
         foreach ($node->children as $child) {
+            if ($this->compressedTail($child) !== null) {
+                continue;
+            }
+
             $this->assignBase($child, $usedIndexes);
         }
     }
@@ -156,14 +165,23 @@ class DoubleArrayTrieBuilder
     }
 
     /**
-     * 配置済み trie ノードを Searcher の base/check 配列へ展開する。
+     * 配置済み trie ノードを Searcher の base/check 配列と tail 配列へ展開する。
      *
      * @param array<int, int> $base
      * @param array<int, int> $chck
-     * @return array{0:array<int, int>, 1:array<int, int>}
+     * @param array<int, int> $begs
+     * @param array<int, int> $lens
+     * @param list<int> $tail
+     * @return array{0:array<int, int>, 1:array<int, int>, 2:array<int, int>, 3:array<int, int>, 4:list<int>}
      */
-    private function emitNode(TrieBuildNode $node, array $base, array $chck): array
-    {
+    private function emitNode(
+        TrieBuildNode $node,
+        array $base,
+        array $chck,
+        array $begs,
+        array $lens,
+        array $tail,
+    ): array {
         $nodeBase = $this->assignedBase($node);
 
         if ($node->id === null) {
@@ -175,28 +193,76 @@ class DoubleArrayTrieBuilder
 
         foreach ($node->children as $code => $child) {
             $index = $nodeBase + $code;
-            $base[$index] = $this->assignedBase($child);
             $chck[$index] = $code;
-            [$base, $chck] = $this->emitNode($child, $base, $chck);
+            $compressed = $this->compressedTail($child);
+
+            if ($compressed !== null) {
+                $id = $compressed['id'];
+                $base[$index] = -($id + 1);
+                $begs[$id] = count($tail);
+                $lens[$id] = count($compressed['suffix']);
+                array_push($tail, ...$compressed['suffix']);
+
+                continue;
+            }
+
+            $base[$index] = $this->assignedBase($child);
+            [$base, $chck, $begs, $lens, $tail] = $this->emitNode($child, $base, $chck, $begs, $lens, $tail);
         }
 
-        return [$base, $chck];
+        return [$base, $chck, $begs, $lens, $tail];
     }
 
     /**
-     * Searcher が読む順序でヘッダ、tail index、base、lens、check を連結する。
+     * 途中に分岐や終端がない単一路なら、現在ノード以降を tail suffix として表現する。
+     *
+     * @return array{id:int, suffix:list<int>}|null
+     */
+    private function compressedTail(TrieBuildNode $node): ?array
+    {
+        if ($node->id !== null) {
+            if ($node->children !== []) {
+                return null;
+            }
+
+            return ['id' => $node->id, 'suffix' => []];
+        }
+
+        if (count($node->children) !== 1) {
+            return null;
+        }
+
+        $code = array_key_first($node->children);
+        $child = $node->children[$code];
+        $compressed = $this->compressedTail($child);
+
+        if ($compressed === null) {
+            return null;
+        }
+
+        array_unshift($compressed['suffix'], $code);
+
+        return $compressed;
+    }
+
+    /**
+     * Searcher が読む順序でヘッダ、tail index、base、lens、check、tail を連結する。
      *
      * @param list<int> $base
      * @param list<int> $chck
+     * @param array<int, int> $begs
+     * @param array<int, int> $lens
+     * @param list<int> $tail
      */
-    private function dictionaryBinary(array $base, array $chck, int $keyCount): string
+    private function dictionaryBinary(array $base, array $chck, array $begs, array $lens, array $tail): string
     {
         return (
-            $this->packInts([count($base), $keyCount, 0])
-            . $this->packInts(array_fill(0, $keyCount, 0))
+            $this->packInts([count($base), count($begs), count($tail)])
+            . $this->packInts(array_values($begs))
             . $this->packInts($base)
-            . $this->packShorts(array_fill(0, $keyCount, 0))
+            . $this->packShorts(array_values($lens))
             . $this->packChars($chck)
+            . $this->packChars($tail)
         );
     }
 
