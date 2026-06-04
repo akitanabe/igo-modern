@@ -170,7 +170,7 @@ class Tagger
             return [];
         }
 
-        return array_values(array_map(static fn(int $code): int => $code, $codes));
+        return array_values($codes);
     }
 
     /**

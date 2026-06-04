@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IgoModern\Dictionary;
 
+use IgoModern\Binary\PagedBinaryReader;
 use RuntimeException;
 
 /**
@@ -11,31 +12,15 @@ use RuntimeException;
  */
 class WordDataReader
 {
-    /** @var resource word.dat を範囲読み込みするためのファイルハンドルを保持する。 */
-    private $file;
+    /** word.dat をページキャッシュ経由で範囲読み込みする reader を保持する。 */
+    private PagedBinaryReader $reader;
 
     /**
      * 素性データの読み取り対象ファイルを開く。
      */
     public function __construct(string $fileName)
     {
-        $file = fopen($fileName, 'rb');
-
-        if ($file === false) {
-            throw new RuntimeException('dictionary reading failed.');
-        }
-
-        $this->file = $file;
-    }
-
-    /**
-     * 開いているファイルハンドルを閉じ、範囲読み込みのリソースを解放する。
-     */
-    public function __destruct()
-    {
-        if (is_resource($this->file)) {
-            fclose($this->file);
-        }
+        $this->reader = new PagedBinaryReader($fileName);
     }
 
     /**
@@ -59,18 +44,6 @@ class WordDataReader
             throw new RuntimeException('dictionary reading failed.');
         }
 
-        $seekResult = fseek($this->file, $start * 2);
-
-        if ($seekResult !== 0) {
-            throw new RuntimeException('dictionary seeking failed.');
-        }
-
-        $bytes = fread($this->file, $byteLength);
-
-        if ($bytes === false || strlen($bytes) !== $byteLength) {
-            throw new RuntimeException('dictionary reading failed.');
-        }
-
-        return $bytes;
+        return $this->reader->readBytes($start * 2, $byteLength);
     }
 }
