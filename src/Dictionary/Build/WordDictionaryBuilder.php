@@ -137,11 +137,23 @@ class WordDictionaryBuilder implements DictionaryBuildStep
             throw new RuntimeException(sprintf('%s line %d has empty trie key.', $sourceName, $lineNumber));
         }
 
+        $leftId = (int) $fields[0];
+        $rightId = (int) $fields[1];
+        $cost = (int) $fields[2];
+
+        if (!$this->isSignedShort($leftId) || !$this->isSignedShort($rightId) || !$this->isSignedShort($cost)) {
+            throw new RuntimeException(sprintf(
+                '%s line %d word ids or cost is outside signed short range.',
+                $sourceName,
+                $lineNumber,
+            ));
+        }
+
         return [
             'key' => $key,
-            'leftId' => (int) $fields[0],
-            'rightId' => (int) $fields[1],
-            'cost' => (int) $fields[2],
+            'leftId' => $leftId,
+            'rightId' => $rightId,
+            'cost' => $cost,
             'feature' => implode($delimiter, array_slice($fields, 3)),
         ];
     }
@@ -459,5 +471,13 @@ class WordDictionaryBuilder implements DictionaryBuildStep
     private function isInteger(string $value): bool
     {
         return preg_match('/^-?\d+$/', $value) === 1;
+    }
+
+    /**
+     * word.inf の signed short フィールドへ損失なく保存できる範囲だけを受け入れる。
+     */
+    private function isSignedShort(int $value): bool
+    {
+        return $value >= -32_768 && $value <= 32_767;
     }
 }

@@ -128,6 +128,23 @@ class WordDictionaryBuilderTest extends TestCase
     }
 
     /**
+     * word.inf に signed short として保存できない単語コストを parse error として扱うことを確認する。
+     */
+    public function testBuildFailsWhenWordCostIsOutsideSignedShortRange(): void
+    {
+        $inputDirectory = $this->createTemporaryDirectory('igo-word-in-');
+        $outputDirectory = $this->createMissingTemporaryDirectory('igo-word-out-');
+        $this->writeTextFile($inputDirectory . '/char.def', "DEFAULT 1 0 1\nSPACE 0 1 2\n0x0020 SPACE\n");
+        $this->writeTextFile($inputDirectory . '/unk.def', "DEFAULT,1,1,1,DEFAULT\nSPACE,1,1,1,SPACE\n");
+        $this->writeTextFile($inputDirectory . '/noun.csv', "猫,1,1,32768,NOUN\n");
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('noun.csv line 1 word ids or cost is outside signed short range.');
+
+        (new WordDictionaryBuilder())->build($outputDirectory, $inputDirectory, 'UTF-8', ',');
+    }
+
+    /**
      * 指定 prefix の一時ディレクトリを作成し、後片付け対象として記録する。
      */
     private function createTemporaryDirectory(string $prefix): string
