@@ -1,10 +1,10 @@
-# 実行時辞書メモリ削減案
+# 実行時辞書メモリ削減計画
 
 ## 目的
 
 検索処理で Igo Modern を利用する場合、解析器そのものの処理時間は実用圏内に見える一方で、辞書ロード後の PHP プロセスごとのメモリ使用量が集中時の制約になりやすいです。
 
-この文書は、実装前の検討メモとして、実行時辞書を PHP ヒープへ載せすぎないための方針を整理します。現時点では設計案であり、まだ実装方針として確定したものではありません。
+この文書は、実行時辞書を PHP ヒープへ載せすぎないための実装方針を整理します。実装では、改善につながるものは通常経路へ取り込み、速度とメモリのトレードオフを生むものは `RuntimeOptions` で切り替え可能にします。
 
 ## 現状
 
@@ -33,6 +33,35 @@
 
 ただし、SQLite を完全に除外するわけではありません。辞書を 1 ファイルにまとめたい、メタ情報やバージョンを同梱したい、SQLite の page cache や mmap を使いたい、といった運用目的が明確な場合は候補になります。
 
+実装判断は次の基準で行います。
+
+- メモリ削減になり、`parse()` の mean、median、p95 が現行比 10% 以内の劣化に収まる変更は通常経路に採用する。
+- 10% を超える速度劣化がある変更、または利用用途によって速度優先とメモリ優先が分かれる変更は `RuntimeOptions` で切り替える。
+- 解析結果、辞書ファイル形式、既存の `parse()` / `wakati()` の戻り値は変更しない。
+
+### RuntimeOptions
+
+トレードオフを持つ runtime reader は、公開設定オブジェクト `RuntimeOptions` で切り替えます。
+
+想定 API は次の形です。
+
+```php
+use IgoModern\Igo;
+use IgoModern\RuntimeOptions;
+
+$igo = new Igo('dist/igo-dic', 'UTF-8', RuntimeOptions::preferMemory());
+```
+
+公開 API の想定変更は次のとおりです。
+
+- `Igo::__construct(string $dataDir, ?string $outputEncoding = null, ?RuntimeOptions $runtimeOptions = null)`
+- `Tagger::__construct(string $dataDir, ?string $outputEncoding = null, ?RuntimeOptions $runtimeOptions = null)`
+- `RuntimeOptions::defaults()`
+- `RuntimeOptions::preferSpeed()`
+- `RuntimeOptions::preferMemory()`
+
+既存呼び出しは第 3 引数省略で動くため、利用者コードの変更は不要です。PHP 8.0 対応を維持するため enum は使わず、内部状態は private property と問い合わせメソッドで表します。
+
 ## 実装候補
 
 ### 1. `word.dat` の stream 化
@@ -51,6 +80,10 @@ wordId
 期待効果は、`word.dat` 約 26 MiB の常駐 string を削れることです。検索用途では解析結果から常にすべての素性を使うとは限らないため、将来的には検索用 tokenizer が表層形・原形・品詞など必要な情報だけ読む設計にもつなげられます。
 
 注意点として、`wordData()` は解析結果の `Morpheme` 生成時に呼ばれるため、短い slice 読み込みが増えます。単純な `fseek()` / `fread()` だけで十分か、ページキャッシュ付き reader が必要かをベンチマークで確認します。
+
+実装では、まず `WordDataReader` の単体テストで UTF-16 code unit offset から必要 slice だけ読む挙動を固定します。その後 `WordDic` の `private string $data` を reader に置き換え、`wordData()` は `dataOffsets` から算出した範囲を reader に委譲します。
+
+この変更は探索ループの内側ではなく、`parse()` の最終結果生成時に効くため、最初に実装する候補とします。速度劣化が 10% 以内なら通常経路に採用し、10% を超える場合は `RuntimeOptions` で memory profile は stream、speed profile は従来の full string を使う構成にします。
 
 ### 2. ページキャッシュ付き binary reader
 
@@ -80,6 +113,8 @@ end = indices[trieId + 1]
 
 ファイルサイズは `word.dat` より小さいものの、PHP array のメモリ効率を考えると削減効果はあります。`WordDic::callWordRange()` の呼び出し頻度が高いため、速度影響を必ず測定します。
 
+実装では `WordDic::$indices` を `list<int>` から `IntArray` に変更し、`callWordRange()` は `get($trieId)` と `get($trieId + 1)` で範囲を読みます。速度劣化が 10% 以内なら通常経路に採用し、10% を超える場合は `RuntimeOptions` で memory profile は dynamic array、speed profile は従来の PHP array を使います。
+
 ### 4. `word2id` tail の stream 化
 
 `Searcher` は tail 圧縮された suffix を `list<int>` として保持し、`KeyStream::startsWith()` で入力の続きと比較します。
@@ -93,6 +128,10 @@ end = indices[trieId + 1]
 - tail 長が短い語ではまとめ読みし、長い語だけ streaming 比較する。
 
 まずは PHP array 化を避けるだけでもメモリ削減が期待できます。完全 stream 化は、比較ループのコストをベンチマークで確認してから判断します。
+
+tail 比較は trie 探索の内側にあるため、`word.dat` や `word.ary.idx` より慎重に進めます。初期案では、tail を巨大な `list<int>` へ展開せず、UTF-16 binary string または `CharArray` reader として保持します。`KeyStream::startsWith()` は compact tail を比較できるように拡張します。
+
+速度劣化が 10% 以内なら通常経路に採用します。10% を超える場合は、`RuntimeOptions` で memory profile は compact tail、speed profile は従来の PHP array tail を使えるようにします。
 
 ### 5. SQLite 辞書コンテナ
 
@@ -132,6 +171,7 @@ SQLite 化は、file-backed reader の効果と限界を確認した後の第 2 
 - `parse()` の mean、median、p95
 - chars/sec、morphemes/sec
 - peak memory
+- 辞書ロード直後の current memory と peak memory
 - 同一プロセス内での連続実行時の安定性
 - 可能であれば PHP-FPM worker 相当の複数プロセス起動時の総 RSS
 
@@ -146,11 +186,13 @@ php -d xdebug.mode=off bin/bench parse dist/igo-dic --file=bench/corpus/search.t
 
 1. `word.dat` を `WordDataReader` へ置き換え、メモリ削減量と速度低下を測る。
 2. `word.ary.idx` を `IntDynamicArray` または `IntPagedArray` へ置き換える。
-3. `PagedBinaryReader` を導入し、既存 dynamic array の syscall 回数を減らす。
-4. `word2id` tail の PHP array 化を避ける。
+3. `word2id` tail の PHP array 化を避ける。
+4. 必要に応じて `PagedBinaryReader` を導入し、既存 dynamic array の syscall 回数を減らす。
 5. 必要に応じて SQLite 辞書コンテナを試作する。
 
 この順序は、変更範囲が小さく効果を測りやすいものから進めるためのものです。実装段階では、各ステップで Red、Green、Refactor の流れを取り、既存の解析結果互換性を壊さないことを先にテストで固定します。
+
+`PagedBinaryReader` は単体のメモリ削減策ではなく、file-backed 化による速度低下が見えた場合の速度対策として扱います。既定ページサイズは初期案として 8 KiB、キャッシュは直近 1 ページから始めます。ページサイズやキャッシュ量が用途依存になる場合は `RuntimeOptions` の設定対象にします。
 
 ## リスク
 
@@ -159,11 +201,12 @@ php -d xdebug.mode=off bin/bench parse dist/igo-dic --file=bench/corpus/search.t
 - SQLite を細粒度アクセスに使うと、SQL 実行オーバーヘッドで解析速度が大きく落ちる可能性がある。
 - OS や filesystem、PHP ビルド、opcache、Xdebug の有無で測定結果が変わる。
 - `wordData()` の遅延読み込みは、解析後に全 morpheme の feature を必ず読む使い方では効果が小さくなる可能性がある。
+- `RuntimeOptions` を細かくしすぎると公開 API が複雑になるため、まずは `defaults()`、`preferSpeed()`、`preferMemory()` の named constructor を中心にする。
 
 ## 未決事項
 
 - 検索用途では `Morpheme::feature` 全体が必要か、表層形・原形・品詞などの検索 token 生成に必要な部分だけでよいか。
-- `WordDic` に runtime profile を追加し、memory 優先と speed 優先を切り替えるか。
-- `FileMappedInputStream` の `reduce` オプションを公開設定として扱うか。
-- ページサイズの既定値を 8 KiB、16 KiB、64 KiB のどれにするか。
+- `RuntimeOptions` の内部設定をどこまで細分化するか。
+- `FileMappedInputStream` の `reduce` オプションを `RuntimeOptions` の配下で公開設定として扱うか。
+- ページサイズの既定値を 8 KiB から変更する必要があるか。
 - SQLite を採用する場合、PDO と ext-sqlite3 のどちらを reader の基盤にするか。
