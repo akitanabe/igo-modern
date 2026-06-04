@@ -146,6 +146,33 @@ class CharCategoryBuilderTest extends TestCase
     }
 
     /**
+     * DEFAULT と SPACE の必須カテゴリがない char.def を parse error として扱うことを確認する。
+     *
+     * @dataProvider requiredCategoryDefinitionProvider
+     *
+     * @param array<string, int> $resolverIds
+     */
+    public function testBuildFailsWhenRequiredCategoryIsMissing(
+        string $definition,
+        array $resolverIds,
+        string $message,
+    ): void {
+        $inputDirectory = $this->createTemporaryDirectory('igo-char-in-');
+        $outputDirectory = $this->createTemporaryDirectory('igo-char-out-');
+        $this->writeTextFile($inputDirectory . '/char.def', $definition);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage($message);
+
+        (new CharCategoryBuilder(new MappingCategoryIdResolver($resolverIds)))->build(
+            $outputDirectory,
+            $inputDirectory,
+            'UTF-8',
+            ',',
+        );
+    }
+
+    /**
      * char.category に保存する未知語 trie ID は非負でなければならないため、resolver の不正値を拒否する。
      */
     public function testBuildFailsWhenResolvedCategoryIdIsNegative(): void
@@ -163,6 +190,27 @@ class CharCategoryBuilderTest extends TestCase
             'UTF-8',
             ',',
         );
+    }
+
+    /**
+     * 必須カテゴリ欠落の代表的な char.def と期待するエラーメッセージを返す。
+     *
+     * @return array<string, array{0:string, 1:array<string, int>, 2:string}>
+     */
+    public function requiredCategoryDefinitionProvider(): array
+    {
+        return [
+            'missing default' => [
+                "SPACE 0 1 2\n0x0020 SPACE\n",
+                ['SPACE' => 1],
+                'char.def must define DEFAULT category.',
+            ],
+            'missing space' => [
+                "DEFAULT 1 0 1\n0x0020 DEFAULT\n",
+                ['DEFAULT' => 0],
+                'char.def must define SPACE category.',
+            ],
+        ];
     }
 
     /**
