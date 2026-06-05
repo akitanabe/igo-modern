@@ -62,6 +62,25 @@ class ParseBenchmarkRunnerTest extends TestCase
         $this->assertSame(2, $result->morphemes);
         $this->assertSame(["alpha\tFEATURE_ALPHA,0", "beta\tFEATURE_BETA,5"], $result->morphemeOutputLines);
     }
+
+    /**
+     * 辞書ロードの常駐メモリと parse のピークを分離指標として収集し、
+     * 実使用ピークが割当ピークを超えない関係になることを確認する。
+     */
+    public function testRunReportsSeparatedMemoryMetrics(): void
+    {
+        $runner = new ParseBenchmarkRunner(static fn(string $dictionary): Parser => new BenchmarkStubParser([
+            new Morpheme('alpha', 'FEATURE_ALPHA', 0),
+        ]));
+
+        $result = $runner->run(new ParseBenchmarkConfig('/tmp/dictionary', 2, 1, 'mixed', 'alpha'));
+
+        // 辞書常駐分は非負、実使用ピークは正の、独立した指標として得られる。
+        $this->assertGreaterThanOrEqual(0, $result->dictionaryResidentBytes);
+        $this->assertGreaterThan(0, $result->peakMemoryRealBytes);
+        // 実使用ピークは、OS から確保した割当ピークを超えない。
+        $this->assertLessThanOrEqual($result->peakMemoryBytes, $result->peakMemoryRealBytes);
+    }
 }
 
 /**

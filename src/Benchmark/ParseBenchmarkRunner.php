@@ -43,7 +43,11 @@ class ParseBenchmarkRunner
         $this->validateConfig($config);
 
         $text = $this->benchmarkText($config);
+
+        // 辞書ロードによる常駐メモリ増分を、ロード前後の使用量差として測り、辞書コストを独立指標にする。
+        $beforeLoad = memory_get_usage();
         $parser = ($this->parserFactory)($config->dictionary);
+        $dictionaryResidentBytes = max(0, memory_get_usage() - $beforeLoad);
 
         $this->warmUpParser($parser, $text, $config->warmup);
         $measurement = $this->measureParser($parser, $text, $config->iterations);
@@ -57,6 +61,8 @@ class ParseBenchmarkRunner
             $measurement['morphemes'],
             DurationSummary::fromDurations($measurement['durations']),
             memory_get_peak_usage(true),
+            memory_get_peak_usage(false),
+            $dictionaryResidentBytes,
             $measurement['morphemeOutputLines'],
         );
     }
@@ -138,35 +144,33 @@ class ParseBenchmarkRunner
     }
 
     /**
-     * 指定回数だけ解析を実行し、各試行の経過時間と生成形態素数を収集する。
+     * 指定回数だけ parse を実行して経過時間を集め、比較用の形態素出力は最後の試行結果から一度だけ生成する。
      *
      * @return array{durations:non-empty-list<float>, morphemes:int, morphemeOutputLines:list<string>}
      */
     private function measureParser(Parser $parser, string $text, int $iterations): array
     {
-        $firstMeasurement = $this->measureOnce($parser, $text);
-        $durations = [$firstMeasurement['duration']];
-        $morphemeCount = $firstMeasurement['morphemes'];
-        $morphemeOutputLines = $firstMeasurement['morphemeOutputLines'];
+        // 初回試行をループ外で実行し、経過時間リストの非空性と最新形態素列を確定する。
+        [$firstDuration, $morphemes] = $this->measureOnce($parser, $text);
+        $durations = [$firstDuration];
 
         for ($i = 1; $i < $iterations; $i++) {
-            $measurement = $this->measureOnce($parser, $text);
-            $durations[] = $measurement['duration'];
-            $morphemeCount = $measurement['morphemes'];
-            $morphemeOutputLines = $measurement['morphemeOutputLines'];
+            [$duration, $morphemes] = $this->measureOnce($parser, $text);
+            $durations[] = $duration;
         }
 
+        // 形態素整形は比較用途のみのため、測定区間とメモリピークの外で最後の結果に対し一度だけ行う。
         return [
             'durations' => $durations,
-            'morphemes' => $morphemeCount,
-            'morphemeOutputLines' => $morphemeOutputLines,
+            'morphemes' => count($morphemes),
+            'morphemeOutputLines' => $this->formatMorphemes($morphemes),
         ];
     }
 
     /**
-     * 1 回の parse 実行時間と、その実行で生成された形態素数を測定する。
+     * 1 回の parse 実行の経過時間と、その試行で生成された形態素列をまとめて返す。
      *
-     * @return array{duration:float, morphemes:int, morphemeOutputLines:list<string>}
+     * @return array{0:float, 1:list<Morpheme>}
      */
     private function measureOnce(Parser $parser, string $text): array
     {
@@ -174,11 +178,7 @@ class ParseBenchmarkRunner
         $morphemes = $parser->parse($text);
         $finishedAt = hrtime(true);
 
-        return [
-            'duration' => (float) ($finishedAt - $startedAt) / 1_000_000.0,
-            'morphemes' => count($morphemes),
-            'morphemeOutputLines' => $this->formatMorphemes($morphemes),
-        ];
+        return [(float) ($finishedAt - $startedAt) / 1_000_000.0, $morphemes];
     }
 
     /**

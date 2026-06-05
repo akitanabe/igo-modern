@@ -254,7 +254,12 @@ class ParseBenchmarkCommand extends Command
                 $result->lines / $secondsPerIteration,
                 $result->morphemes / $secondsPerIteration,
             )
-            . sprintf("Peak memory: %.2f MiB\n", $this->mebibytes($result->peakMemoryBytes))
+            . sprintf("Dictionary resident: %.2f MiB\n", $this->mebibytes($result->dictionaryResidentBytes))
+            . sprintf(
+                "Peak memory: %.2f MiB real / %.2f MiB allocated\n",
+                $this->mebibytes($result->peakMemoryRealBytes),
+                $this->mebibytes($result->peakMemoryBytes),
+            )
         );
     }
 

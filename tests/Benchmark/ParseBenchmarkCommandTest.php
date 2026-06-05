@@ -114,6 +114,25 @@ class ParseBenchmarkCommandTest extends TestCase
     }
 
     /**
+     * メモリレポートが辞書常駐分と、実使用/割当ピークを区別して表示することを確認する。
+     */
+    public function testExecuteReportsSeparatedMemoryMetrics(): void
+    {
+        $dictionary = $this->temporaryDirectory('igo-bench-dic-');
+        $command = new ParseBenchmarkCommand(new FixedParseBenchmarkRunner());
+        $tester = new CommandTester($command);
+
+        $statusCode = $tester->execute(['-d' => $dictionary]);
+
+        $this->assertSame(0, $statusCode);
+        $display = $tester->getDisplay();
+        // 辞書常駐分を独立行として表示する。
+        $this->assertStringContainsString('Dictionary resident: 0.06 MiB', $display);
+        // ピークは実使用と割当を併記し、割当値だけが独り歩きするのを防ぐ。
+        $this->assertStringContainsString('Peak memory: 0.50 MiB real / 1.00 MiB allocated', $display);
+    }
+
+    /**
      * 出力パスの datetime プレースホルダが、実行時刻を含むファイル名へ展開されることを確認する。
      */
     public function testExecuteExpandsDatetimePlaceholderInOutputPath(): void
@@ -215,6 +234,8 @@ class FixedParseBenchmarkRunner extends ParseBenchmarkRunner
             50,
             new DurationSummary(1000.0, 1000.0, 1000.0, 1000.0, 1000.0),
             1024 * 1024,
+            512 * 1024,
+            64 * 1024,
             ["alpha\tFEATURE_ALPHA,0", "beta\tFEATURE_BETA,6"],
         );
     }
