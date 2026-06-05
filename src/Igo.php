@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace IgoModern;
 
 use IgoModern\Analysis\Tagger;
+use Throwable;
 
 /**
  * 利用者向けの公開 API として Tagger を保持し、形態素解析と分かち書きを提供する。
@@ -27,6 +28,18 @@ class Igo implements Parser
     }
 
     /**
+     * 辞書読み込みに失敗しても例外を投げず、公開 API の利用可否を null で表す。
+     */
+    public static function tryFromDataDir(string $dataDir, ?string $outputEncoding = null): ?self
+    {
+        try {
+            return self::fromDataDir($dataDir, $outputEncoding);
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
      * 入力テキストを解析し、形態素列を返す。
      *
      * @return list<Morpheme>
@@ -37,6 +50,20 @@ class Igo implements Parser
     }
 
     /**
+     * 解析失敗時に例外を捕捉し、成功時だけ形態素列を返す。
+     *
+     * @return list<Morpheme>|null
+     */
+    public function tryParse(string $text): ?array
+    {
+        try {
+            return $this->parse($text);
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
      * 入力テキストを解析し、形態素の表層形だけを順序どおり返す。
      *
      * @return list<string>
@@ -44,5 +71,19 @@ class Igo implements Parser
     public function wakati(string $text): array
     {
         return $this->tagger->wakati($text);
+    }
+
+    /**
+     * 分かち書き失敗時に例外を捕捉し、成功時だけ表層形リストを返す。
+     *
+     * @return list<string>|null
+     */
+    public function tryWakati(string $text): ?array
+    {
+        try {
+            return $this->wakati($text);
+        } catch (Throwable) {
+            return null;
+        }
     }
 }

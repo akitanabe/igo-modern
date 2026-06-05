@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace IgoModern\Tests;
 
+use IgoModern\Analysis\Tagger;
 use IgoModern\Igo;
 use IgoModern\Morpheme;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 /**
  * Igo が公開ファサードとして Tagger の parse/wakati 挙動を提供することを検証するテスト。
@@ -68,6 +70,75 @@ class IgoTest extends TestCase
         $igo = Igo::fromDataDir($this->createDictionaryDirectory(1), null);
 
         $this->assertSame(['A', 'B'], $igo->wakati('A B'));
+    }
+
+    /**
+     * tryFromDataDir が読み込み可能な辞書では Igo インスタンスを返すことを確認する。
+     */
+    public function testTryFromDataDirReturnsIgoWhenDictionaryCanBeLoaded(): void
+    {
+        $igo = Igo::tryFromDataDir($this->createDictionaryDirectory(1), null);
+
+        $this->assertInstanceOf(Igo::class, $igo);
+    }
+
+    /**
+     * tryFromDataDir が辞書読み込み失敗時に例外を公開 API の外へ漏らさないことを確認する。
+     */
+    public function testTryFromDataDirReturnsNullWhenDictionaryCannotBeLoaded(): void
+    {
+        $igo = Igo::tryFromDataDir(__DIR__ . '/missing-dictionary', null);
+
+        $this->assertNull($igo);
+    }
+
+    /**
+     * tryParse が解析成功時に parse と同じ形態素列を返すことを確認する。
+     */
+    public function testTryParseReturnsMorphemesWhenParsingSucceeds(): void
+    {
+        $igo = Igo::fromDataDir($this->createDictionaryDirectory(2), null);
+
+        $result = $igo->tryParse('AB');
+
+        $this->assertIsArray($result);
+        $this->assertCount(1, $result);
+        $this->assertContainsOnlyInstancesOf(Morpheme::class, $result);
+        $this->assertSame('AB', $result[0]->surface);
+    }
+
+    /**
+     * tryParse が解析失敗時に null を返し、呼び出し側で例外処理を省けることを確認する。
+     */
+    public function testTryParseReturnsNullWhenParsingFails(): void
+    {
+        $tagger = $this->createMock(Tagger::class);
+        $tagger->method('parse')->willThrowException(new RuntimeException('parse failed.'));
+        $igo = new Igo($tagger);
+
+        $this->assertNull($igo->tryParse('AB'));
+    }
+
+    /**
+     * tryWakati が分かち書き成功時に wakati と同じ表層形リストを返すことを確認する。
+     */
+    public function testTryWakatiReturnsSurfacesWhenParsingSucceeds(): void
+    {
+        $igo = Igo::fromDataDir($this->createDictionaryDirectory(1), null);
+
+        $this->assertSame(['A', 'B'], $igo->tryWakati('A B'));
+    }
+
+    /**
+     * tryWakati が分かち書き失敗時に null を返し、通常の wakati と失敗経路を分離することを確認する。
+     */
+    public function testTryWakatiReturnsNullWhenParsingFails(): void
+    {
+        $tagger = $this->createMock(Tagger::class);
+        $tagger->method('wakati')->willThrowException(new RuntimeException('wakati failed.'));
+        $igo = new Igo($tagger);
+
+        $this->assertNull($igo->tryWakati('A B'));
     }
 
     /**
