@@ -41,7 +41,7 @@ class ParseCommand extends Command
     public static function createDefault(): self
     {
         return new self(
-            static fn(string $dataDir, ?string $outputEncoding): Parser => Igo::fromDataDir($dataDir, $outputEncoding),
+            static fn(string $dataDir, ?string $outputEncoding): Parser => Igo::fromDictDir($dataDir, $outputEncoding),
         );
     }
 

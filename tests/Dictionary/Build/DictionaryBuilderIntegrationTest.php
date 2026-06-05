@@ -66,7 +66,7 @@ class DictionaryBuilderIntegrationTest extends TestCase
 
         DictionaryBuilder::standard()->build($outputDirectory, $inputDirectory, 'UTF-8');
 
-        $result = Igo::fromDataDir($outputDirectory, 'UTF-8')->parse('猫AB');
+        $result = Igo::fromDictDir($outputDirectory, 'UTF-8')->parse('猫AB');
 
         $this->assertCount(2, $result);
         $this->assertSame('猫', $result[0]->surface);

@@ -32,7 +32,7 @@ class ParseBenchmarkRunner
      */
     public static function createDefault(): self
     {
-        return new self(static fn(string $dictionary): Parser => Igo::fromDataDir($dictionary, 'UTF-8'));
+        return new self(static fn(string $dictionary): Parser => Igo::fromDictDir($dictionary, 'UTF-8'));
     }
 
     /**

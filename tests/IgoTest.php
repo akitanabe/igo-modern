@@ -51,7 +51,7 @@ class IgoTest extends TestCase
      */
     public function testParseReturnsMorphemes(): void
     {
-        $igo = Igo::fromDataDir($this->createDictionaryDirectory(2), null);
+        $igo = Igo::fromDictDir($this->createDictionaryDirectory(2), null);
 
         $result = $igo->parse('AB');
 
@@ -67,27 +67,27 @@ class IgoTest extends TestCase
      */
     public function testWakatiReturnsSurfaces(): void
     {
-        $igo = Igo::fromDataDir($this->createDictionaryDirectory(1), null);
+        $igo = Igo::fromDictDir($this->createDictionaryDirectory(1), null);
 
         $this->assertSame(['A', 'B'], $igo->wakati('A B'));
     }
 
     /**
-     * tryFromDataDir が読み込み可能な辞書では Igo インスタンスを返すことを確認する。
+     * tryFromDictDir が読み込み可能な辞書では Igo インスタンスを返すことを確認する。
      */
-    public function testTryFromDataDirReturnsIgoWhenDictionaryCanBeLoaded(): void
+    public function testTryFromDictDirReturnsIgoWhenDictionaryCanBeLoaded(): void
     {
-        $igo = Igo::tryFromDataDir($this->createDictionaryDirectory(1), null);
+        $igo = Igo::tryFromDictDir($this->createDictionaryDirectory(1), null);
 
         $this->assertInstanceOf(Igo::class, $igo);
     }
 
     /**
-     * tryFromDataDir が辞書読み込み失敗時に例外を公開 API の外へ漏らさないことを確認する。
+     * tryFromDictDir が辞書読み込み失敗時に例外を公開 API の外へ漏らさないことを確認する。
      */
-    public function testTryFromDataDirReturnsNullWhenDictionaryCannotBeLoaded(): void
+    public function testTryFromDictDirReturnsNullWhenDictionaryCannotBeLoaded(): void
     {
-        $igo = Igo::tryFromDataDir(__DIR__ . '/missing-dictionary', null);
+        $igo = Igo::tryFromDictDir(__DIR__ . '/missing-dictionary', null);
 
         $this->assertNull($igo);
     }
@@ -97,7 +97,7 @@ class IgoTest extends TestCase
      */
     public function testTryParseReturnsMorphemesWhenParsingSucceeds(): void
     {
-        $igo = Igo::fromDataDir($this->createDictionaryDirectory(2), null);
+        $igo = Igo::fromDictDir($this->createDictionaryDirectory(2), null);
 
         $result = $igo->tryParse('AB');
 
@@ -124,7 +124,7 @@ class IgoTest extends TestCase
      */
     public function testTryWakatiReturnsSurfacesWhenParsingSucceeds(): void
     {
-        $igo = Igo::fromDataDir($this->createDictionaryDirectory(1), null);
+        $igo = Igo::fromDictDir($this->createDictionaryDirectory(1), null);
 
         $this->assertSame(['A', 'B'], $igo->tryWakati('A B'));
     }

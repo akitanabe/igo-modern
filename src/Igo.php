@@ -22,18 +22,18 @@ class Igo implements Parser
     /**
      * 辞書ディレクトリと出力エンコーディングから公開 API を構築する。
      */
-    public static function fromDataDir(string $dataDir, ?string $outputEncoding = null): self
+    public static function fromDictDir(string $dictDir, ?string $outputEncoding = null): self
     {
-        return new self(Tagger::fromDataDir($dataDir, $outputEncoding));
+        return new self(Tagger::fromDataDir($dictDir, $outputEncoding));
     }
 
     /**
      * 辞書読み込みに失敗しても例外を投げず、公開 API の利用可否を null で表す。
      */
-    public static function tryFromDataDir(string $dataDir, ?string $outputEncoding = null): ?self
+    public static function tryFromDictDir(string $dictDir, ?string $outputEncoding = null): ?self
     {
         try {
-            return self::fromDataDir($dataDir, $outputEncoding);
+            return self::fromDictDir($dictDir, $outputEncoding);
         } catch (Throwable) {
             return null;
         }
