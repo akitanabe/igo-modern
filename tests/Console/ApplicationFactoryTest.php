@@ -40,6 +40,7 @@ class ApplicationFactoryTest extends TestCase
             'Build an Igo dictionary from a MeCab-compatible dictionary.',
             $tester->getDisplay(),
         );
-        $this->assertStringContainsString('output-directory', $tester->getDisplay());
+        $this->assertStringContainsString('--output', $tester->getDisplay());
+        $this->assertStringContainsString('--input', $tester->getDisplay());
     }
 }

@@ -212,8 +212,8 @@ SQLite 化は、file-backed reader の効果と限界を確認した後の第 2 
 ベンチマークは Xdebug を無効にして実行します。
 
 ```bash
-php -d xdebug.mode=off bin/bench parse dist/igo-dic --sample=mixed
-php -d xdebug.mode=off bin/bench parse dist/igo-dic --file=bench/corpus/search.txt --output=bench/results/search-{datetime}.txt --morpheme-output=bench/results/search-{datetime}.morphemes.txt
+php -d xdebug.mode=off bin/bench parse -d dist/igo-dic --sample=mixed
+php -d xdebug.mode=off bin/bench parse -d dist/igo-dic --file=bench/corpus/search.txt --output=bench/results/search-{datetime}.txt --morpheme-output=bench/results/search-{datetime}.morphemes.txt
 ```
 
 ## 導入結果

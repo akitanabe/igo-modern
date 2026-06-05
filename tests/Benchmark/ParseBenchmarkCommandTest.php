@@ -50,6 +50,24 @@ class ParseBenchmarkCommandTest extends TestCase
     }
 
     /**
+     * ベンチマーク条件を位置引数ではなく短縮名付きオプションとして発見できることを確認する。
+     */
+    public function testConfigureDefinesShortOptionsForBenchmarkInputs(): void
+    {
+        $definition = (new ParseBenchmarkCommand(new FixedParseBenchmarkRunner()))->getDefinition();
+
+        $this->assertFalse($definition->hasArgument('dictionary'));
+        $this->assertSame('d', $definition->getOption('dictionary')->getShortcut());
+        $this->assertSame('r', $definition->getOption('iterations')->getShortcut());
+        $this->assertSame('w', $definition->getOption('warmup')->getShortcut());
+        $this->assertSame('s', $definition->getOption('sample')->getShortcut());
+        $this->assertSame('i', $definition->getOption('text')->getShortcut());
+        $this->assertSame('f', $definition->getOption('file')->getShortcut());
+        $this->assertSame('o', $definition->getOption('output')->getShortcut());
+        $this->assertSame('m', $definition->getOption('morpheme-output')->getShortcut());
+    }
+
+    /**
      * テスト用の出力ファイルとディレクトリを削除し、ファイルシステム上の状態を戻す。
      */
     protected function tearDown(): void
@@ -78,8 +96,11 @@ class ParseBenchmarkCommandTest extends TestCase
         $tester = new CommandTester($command);
 
         $statusCode = $tester->execute([
-            'dictionary' => $dictionary,
-            '--output' => $outputFile,
+            '-d' => $dictionary,
+            '-o' => $outputFile,
+            '-r' => '3',
+            '-w' => '0',
+            '-s' => 'mixed',
         ]);
 
         $this->assertSame(0, $statusCode);
@@ -102,7 +123,7 @@ class ParseBenchmarkCommandTest extends TestCase
         $tester = new CommandTester($command);
 
         $statusCode = $tester->execute([
-            'dictionary' => $dictionary,
+            '--dictionary' => $dictionary,
             '--output' => $dictionary . '/result-{datetime}.txt',
         ]);
 
@@ -127,13 +148,27 @@ class ParseBenchmarkCommandTest extends TestCase
         $tester = new CommandTester($command);
 
         $statusCode = $tester->execute([
-            'dictionary' => $dictionary,
-            '--morpheme-output' => $morphemeFile,
+            '--dictionary' => $dictionary,
+            '-m' => $morphemeFile,
         ]);
 
         $this->assertSame(0, $statusCode);
         $this->assertFileExists($morphemeFile);
         $this->assertSame("alpha\tFEATURE_ALPHA,0\nbeta\tFEATURE_BETA,6\n", file_get_contents($morphemeFile));
+    }
+
+    /**
+     * 必須の辞書オプションが欠けた場合は、runner 実行前に CLI 入力エラーとして失敗することを確認する。
+     */
+    public function testExecuteFailsWhenDictionaryOptionIsMissing(): void
+    {
+        $command = new ParseBenchmarkCommand(new FixedParseBenchmarkRunner());
+        $tester = new CommandTester($command);
+
+        $statusCode = $tester->execute([]);
+
+        $this->assertSame(1, $statusCode);
+        $this->assertSame("option \"--dictionary\" must be a non-empty string.\n", $tester->getDisplay());
     }
 
     /**

@@ -12,7 +12,7 @@ use PHPUnit\Framework\TestCase;
 class ParseBenchmarkScriptTest extends TestCase
 {
     /**
-     * help 表示で利用者が必須引数と主要オプションを確認できることを検証する。
+     * help 表示で利用者が必須オプションと主要オプションを確認できることを検証する。
      */
     public function testHelpShowsUsageAndOptions(): void
     {
@@ -20,6 +20,7 @@ class ParseBenchmarkScriptTest extends TestCase
 
         $this->assertSame(0, $exitCode);
         $this->assertStringContainsString('Benchmark morphological parsing with an Igo dictionary.', $stdout);
+        $this->assertStringContainsString('-d, --dictionary', $stdout);
         $this->assertStringContainsString('--iterations', $stdout);
         $this->assertStringContainsString('--sample', $stdout);
         $this->assertStringContainsString('--file', $stdout);

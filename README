@@ -52,21 +52,22 @@ CLI の使い方
 ローカルリポジトリでは、次の形式で解析できます。
 
 ```bash
-php bin/igo /path/to/ipadic "すもももももももものうち"
+php bin/igo -d /path/to/ipadic -i "すもももももももものうち"
 ```
 
 Composer 経由でインストールされた環境では、通常は `vendor/bin/igo` から実行できます。
 
 ```bash
-vendor/bin/igo /path/to/ipadic "すもももももももものうち"
+vendor/bin/igo -d /path/to/ipadic -i "すもももももももものうち"
 ```
 
-第 2 引数には解析対象の文字列、または解析対象テキストを含むファイルパスを指定します。
+解析対象の文字列は `-i` / `--input`、解析対象テキストを含むファイルパスは
+`-f` / `--file` で指定します。辞書ディレクトリは `-d` / `--dictionary` で指定します。
 出力エンコーディングを明示したい場合は `--encoding` オプション、または旧 CLI 互換の
 `IGO_OUTPUT_ENCODING` 環境変数を使用できます。
 
 ```bash
-vendor/bin/igo /path/to/ipadic input.txt --encoding=UTF-8
+vendor/bin/igo --dictionary=/path/to/ipadic --file=input.txt --encoding=UTF-8
 ```
 
 PHP API の使い方

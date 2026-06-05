@@ -46,6 +46,21 @@ class ParseCommandTest extends TestCase
     }
 
     /**
+     * CLI 利用者が位置引数に頼らず、必須入力を短縮名付きオプションで発見できることを確認する。
+     */
+    public function testConfigureDefinesShortOptionsForRequiredInputs(): void
+    {
+        $definition = (new ParseCommand(static fn(): Parser => new StubParser([])))->getDefinition();
+
+        $this->assertFalse($definition->hasArgument('dictionary'));
+        $this->assertFalse($definition->hasArgument('text'));
+        $this->assertSame('d', $definition->getOption('dictionary')->getShortcut());
+        $this->assertSame('i', $definition->getOption('input')->getShortcut());
+        $this->assertSame('f', $definition->getOption('file')->getShortcut());
+        $this->assertSame('e', $definition->getOption('encoding')->getShortcut());
+    }
+
+    /**
      * 旧 CLI 互換の出力エンコーディング環境変数を退避し、各テストを独立させる。
      */
     protected function setUp(): void
@@ -85,9 +100,9 @@ class ParseCommandTest extends TestCase
 
         $tester = new CommandTester($command);
         $statusCode = $tester->execute([
-            'dictionary' => __DIR__,
-            'text' => 'dummy',
-            '--encoding' => 'UTF-8',
+            '-d' => __DIR__,
+            '-i' => 'dummy',
+            '-e' => 'UTF-8',
         ]);
 
         $this->assertSame(0, $statusCode);
@@ -117,8 +132,8 @@ class ParseCommandTest extends TestCase
         try {
             $tester = new CommandTester($command);
             $statusCode = $tester->execute([
-                'dictionary' => __DIR__,
-                'text' => $textFile,
+                '--dictionary' => __DIR__,
+                '--file' => $textFile,
             ]);
         } finally {
             unlink($textFile);
@@ -140,12 +155,50 @@ class ParseCommandTest extends TestCase
 
         $tester = new CommandTester($command);
         $statusCode = $tester->execute([
-            'dictionary' => __DIR__ . '/missing-dictionary',
-            'text' => 'dummy',
+            '--dictionary' => __DIR__ . '/missing-dictionary',
+            '--input' => 'dummy',
         ]);
 
         $this->assertSame(1, $statusCode);
         $this->assertSame("dictionary not found.\n", $tester->getDisplay());
+    }
+
+    /**
+     * 解析対象はインライン入力かファイルのどちらか一方だけを指定できることを確認する。
+     */
+    public function testExecuteFailsWhenInputAndFileAreBothSpecified(): void
+    {
+        $command = new ParseCommand(function (): Parser {
+            $this->fail('入力指定が矛盾している場合、Parser は作成されないべきです。');
+        });
+
+        $tester = new CommandTester($command);
+        $statusCode = $tester->execute([
+            '--dictionary' => __DIR__,
+            '--input' => 'dummy',
+            '--file' => __FILE__,
+        ]);
+
+        $this->assertSame(1, $statusCode);
+        $this->assertSame("--input and --file cannot be used together.\n", $tester->getDisplay());
+    }
+
+    /**
+     * 解析対象が明示されない場合は、空解析ではなく CLI 入力エラーとして失敗することを確認する。
+     */
+    public function testExecuteFailsWhenInputSourceIsMissing(): void
+    {
+        $command = new ParseCommand(function (): Parser {
+            $this->fail('解析対象がない場合、Parser は作成されないべきです。');
+        });
+
+        $tester = new CommandTester($command);
+        $statusCode = $tester->execute([
+            '--dictionary' => __DIR__,
+        ]);
+
+        $this->assertSame(1, $statusCode);
+        $this->assertSame("either --input or --file must be specified.\n", $tester->getDisplay());
     }
 }
 

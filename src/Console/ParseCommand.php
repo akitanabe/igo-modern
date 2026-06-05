@@ -8,7 +8,6 @@ use IgoModern\Igo;
 use IgoModern\Parser;
 use RuntimeException;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -53,8 +52,9 @@ class ParseCommand extends Command
     {
         $this
             ->setDescription('Parse text with an Igo dictionary.')
-            ->addArgument('dictionary', InputArgument::REQUIRED, 'Dictionary directory.')
-            ->addArgument('text', InputArgument::REQUIRED, 'Text to parse, or a file path containing text.')
+            ->addOption('dictionary', 'd', InputOption::VALUE_REQUIRED, 'Dictionary directory.')
+            ->addOption('input', 'i', InputOption::VALUE_REQUIRED, 'Inline text to parse.')
+            ->addOption('file', 'f', InputOption::VALUE_REQUIRED, 'Text file to parse.')
             ->addOption('encoding', 'e', InputOption::VALUE_REQUIRED, 'Output encoding.');
     }
 
@@ -63,7 +63,7 @@ class ParseCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $dataDir = $this->stringArgument($input, 'dictionary');
+        $dataDir = $this->requiredStringOption($input, 'dictionary');
 
         if (!is_dir($dataDir)) {
             $output->writeln('dictionary not found.');
@@ -71,7 +71,12 @@ class ParseCommand extends Command
             return Command::FAILURE;
         }
 
-        $text = $this->readText($this->stringArgument($input, 'text'));
+        $text = $this->textFromInput($input, $output);
+
+        if ($text === null) {
+            return Command::FAILURE;
+        }
+
         $parser = ($this->parserFactory)($dataDir, $this->outputEncoding($input));
 
         foreach ($parser->parse($text) as $morpheme) {
@@ -82,35 +87,76 @@ class ParseCommand extends Command
     }
 
     /**
-     * Symfony Console の mixed な引数値を、必須文字列引数として取り出す。
+     * Symfony Console の mixed な必須オプション値を、空でない文字列として取り出す。
      */
-    private function stringArgument(InputInterface $input, string $name): string
+    private function requiredStringOption(InputInterface $input, string $name): string
     {
-        $value = $input->getArgument($name);
+        $value = $this->stringOption($input, $name);
 
-        if (!is_string($value)) {
-            throw new RuntimeException(sprintf('argument "%s" must be a string.', $name));
+        if ($value === null || $value === '') {
+            throw new RuntimeException(sprintf('option "--%s" must be a non-empty string.', $name));
         }
 
         return $value;
     }
 
     /**
-     * 第 2 引数がファイルを指す場合は内容を読み込み、それ以外はインラインテキストとして扱う。
+     * インライン入力とファイル入力の排他を検証し、解析対象テキストを取得する。
      */
-    private function readText(string $textOrFile): string
+    private function textFromInput(InputInterface $input, OutputInterface $output): ?string
     {
-        if (!is_file($textOrFile)) {
-            return $textOrFile;
+        $inlineText = $this->stringOption($input, 'input');
+        $fileName = $this->stringOption($input, 'file');
+
+        if (($inlineText === null || $inlineText === '') && ($fileName === null || $fileName === '')) {
+            $output->writeln('either --input or --file must be specified.');
+
+            return null;
         }
 
-        $contents = file_get_contents($textOrFile);
+        if ($inlineText !== null && $inlineText !== '' && $fileName !== null && $fileName !== '') {
+            $output->writeln('--input and --file cannot be used together.');
+
+            return null;
+        }
+
+        if ($fileName === null || $fileName === '') {
+            return $inlineText;
+        }
+
+        return $this->readTextFile($fileName);
+    }
+
+    /**
+     * ファイル入力オプションで指定された解析対象テキストを読み込む。
+     */
+    private function readTextFile(string $fileName): string
+    {
+        $contents = file_get_contents($fileName);
 
         if ($contents === false) {
-            throw new RuntimeException(sprintf('failed to read input file "%s".', $textOrFile));
+            throw new RuntimeException(sprintf('failed to read input file "%s".', $fileName));
         }
 
         return $contents;
+    }
+
+    /**
+     * Symfony Console の mixed なオプション値を、任意文字列として取り出す。
+     */
+    private function stringOption(InputInterface $input, string $name): ?string
+    {
+        $value = $input->getOption($name);
+
+        if ($value === null) {
+            return null;
+        }
+
+        if (!is_string($value)) {
+            throw new RuntimeException(sprintf('option "--%s" must be a string.', $name));
+        }
+
+        return $value;
     }
 
     /**

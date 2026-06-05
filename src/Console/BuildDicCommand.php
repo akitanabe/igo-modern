@@ -7,8 +7,8 @@ namespace IgoModern\Console;
 use IgoModern\Dictionary\Build\DictionaryBuilder;
 use RuntimeException;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
@@ -43,42 +43,45 @@ class BuildDicCommand extends Command
     }
 
     /**
-     * Java 版 BuildDic と同じ位置引数を Symfony Console へ定義する。
+     * 辞書生成に必要な入力値を名前付き CLI オプションとして定義する。
      */
     protected function configure(): void
     {
         $this
             ->setDescription('Build an Igo dictionary from a MeCab-compatible dictionary.')
-            ->addArgument(
-                'output-directory',
-                InputArgument::REQUIRED,
+            ->addOption(
+                'output',
+                'o',
+                InputOption::VALUE_REQUIRED,
                 'Output directory for generated Igo dictionary files.',
             )
-            ->addArgument(
-                'input-directory',
-                InputArgument::REQUIRED,
+            ->addOption(
+                'input',
+                'i',
+                InputOption::VALUE_REQUIRED,
                 'Input directory containing MeCab-compatible dictionary files.',
             )
-            ->addArgument('encoding', InputArgument::REQUIRED, 'Encoding of input dictionary CSV files.')
-            ->addArgument(
+            ->addOption('encoding', 'e', InputOption::VALUE_REQUIRED, 'Encoding of input dictionary CSV files.')
+            ->addOption(
                 'delimiter',
-                InputArgument::OPTIONAL,
+                'd',
+                InputOption::VALUE_REQUIRED,
                 'CSV delimiter used by dictionary definition files.',
                 ',',
             );
     }
 
     /**
-     * CLI 引数を辞書生成器へ渡し、生成全体の副作用を builder 側へ閉じ込める。
+     * CLI オプションを辞書生成器へ渡し、生成全体の副作用を builder 側へ閉じ込める。
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $builder = ($this->builderFactory)();
         $builder->build(
-            $this->stringArgument($input, 'output-directory'),
-            $this->stringArgument($input, 'input-directory'),
-            $this->stringArgument($input, 'encoding'),
-            $this->delimiterArgument($input),
+            $this->requiredStringOption($input, 'output'),
+            $this->requiredStringOption($input, 'input'),
+            $this->requiredStringOption($input, 'encoding'),
+            $this->delimiterOption($input),
         );
 
         $output->writeln('dictionary built.');
@@ -87,30 +90,48 @@ class BuildDicCommand extends Command
     }
 
     /**
-     * Symfony Console の mixed な引数値を、必須文字列引数として取り出す。
+     * Symfony Console の mixed な必須オプション値を、空でない文字列として取り出す。
      */
-    private function stringArgument(InputInterface $input, string $name): string
+    private function requiredStringOption(InputInterface $input, string $name): string
     {
-        $value = $input->getArgument($name);
+        $value = $this->stringOption($input, $name);
 
-        if (!is_string($value) || $value === '') {
-            throw new RuntimeException(sprintf('argument "%s" must be a non-empty string.', $name));
+        if ($value === null || $value === '') {
+            throw new RuntimeException(sprintf('option "--%s" must be a non-empty string.', $name));
         }
 
         return $value;
     }
 
     /**
-     * PHP の CSV parser に渡せる 1 文字 delimiter だけを CLI 引数として受け入れる。
+     * PHP の CSV parser に渡せる 1 文字 delimiter だけを CLI オプションとして受け入れる。
      */
-    private function delimiterArgument(InputInterface $input): string
+    private function delimiterOption(InputInterface $input): string
     {
-        $delimiter = $this->stringArgument($input, 'delimiter');
+        $delimiter = $this->requiredStringOption($input, 'delimiter');
 
         if (strlen($delimiter) !== 1) {
-            throw new RuntimeException('argument "delimiter" must be a single-character string.');
+            throw new RuntimeException('option "--delimiter" must be a single-character string.');
         }
 
         return $delimiter;
+    }
+
+    /**
+     * Symfony Console の mixed なオプション値を、任意文字列として取り出す。
+     */
+    private function stringOption(InputInterface $input, string $name): ?string
+    {
+        $value = $input->getOption($name);
+
+        if ($value === null) {
+            return null;
+        }
+
+        if (!is_string($value)) {
+            throw new RuntimeException(sprintf('option "--%s" must be a string.', $name));
+        }
+
+        return $value;
     }
 }

@@ -7,7 +7,6 @@ namespace IgoModern\Benchmark;
 use InvalidArgumentException;
 use RuntimeException;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\ConsoleOutputInterface;
@@ -45,33 +44,33 @@ class ParseBenchmarkCommand extends Command
     {
         $this
             ->setDescription('Benchmark morphological parsing with an Igo dictionary.')
-            ->addArgument('dictionary', InputArgument::REQUIRED, 'Dictionary directory.')
+            ->addOption('dictionary', 'd', InputOption::VALUE_REQUIRED, 'Dictionary directory.')
             ->addOption(
                 'iterations',
-                null,
+                'r',
                 InputOption::VALUE_REQUIRED,
                 'Measured parse iterations.',
                 (string) ParseBenchmarkConfig::DEFAULT_ITERATIONS,
             )
-            ->addOption('warmup', null, InputOption::VALUE_REQUIRED, 'Warmup parse iterations.', '0')
+            ->addOption('warmup', 'w', InputOption::VALUE_REQUIRED, 'Warmup parse iterations.', '0')
             ->addOption(
                 'sample',
-                null,
+                's',
                 InputOption::VALUE_REQUIRED,
                 'Built-in sample name: short, news, or mixed.',
                 'mixed',
             )
-            ->addOption('text', null, InputOption::VALUE_REQUIRED, 'Inline text to benchmark.')
-            ->addOption('file', null, InputOption::VALUE_REQUIRED, 'UTF-8 text file to benchmark.')
+            ->addOption('text', 'i', InputOption::VALUE_REQUIRED, 'Inline text to benchmark.')
+            ->addOption('file', 'f', InputOption::VALUE_REQUIRED, 'UTF-8 text file to benchmark.')
             ->addOption(
                 'output',
-                null,
+                'o',
                 InputOption::VALUE_REQUIRED,
                 'Write the benchmark report to a file. Use {datetime} for Ymd-His timestamp.',
             )
             ->addOption(
                 'morpheme-output',
-                null,
+                'm',
                 InputOption::VALUE_REQUIRED,
                 'Write morpheme output to a file. Use {datetime} for Ymd-His timestamp.',
             );
@@ -149,12 +148,12 @@ class ParseBenchmarkCommand extends Command
     }
 
     /**
-     * Symfony Console の mixed な引数とオプションを厳密なベンチマーク設定へ変換する。
+     * Symfony Console の mixed なオプション値を厳密なベンチマーク設定へ変換する。
      */
     private function configFromInput(InputInterface $input): ParseBenchmarkConfig
     {
         return new ParseBenchmarkConfig(
-            $this->stringArgument($input, 'dictionary'),
+            $this->requiredStringOption($input, 'dictionary'),
             $this->positiveIntegerOption($input, 'iterations'),
             $this->nonNegativeIntegerOption($input, 'warmup'),
             $this->stringOption($input, 'sample') ?? 'mixed',
@@ -164,14 +163,14 @@ class ParseBenchmarkCommand extends Command
     }
 
     /**
-     * Symfony Console の mixed な引数値を、必須文字列引数として取り出す。
+     * Symfony Console の mixed な必須オプション値を、空でない文字列として取り出す。
      */
-    private function stringArgument(InputInterface $input, string $name): string
+    private function requiredStringOption(InputInterface $input, string $name): string
     {
-        $value = $input->getArgument($name);
+        $value = $this->stringOption($input, $name);
 
-        if (!is_string($value) || $value === '') {
-            throw new RuntimeException(sprintf('argument "%s" must be a non-empty string.', $name));
+        if ($value === null || $value === '') {
+            throw new InvalidArgumentException(sprintf('option "--%s" must be a non-empty string.', $name));
         }
 
         return $value;
@@ -189,7 +188,7 @@ class ParseBenchmarkCommand extends Command
         }
 
         if (!is_string($value)) {
-            throw new RuntimeException(sprintf('option "%s" must be a string.', $name));
+            throw new RuntimeException(sprintf('option "--%s" must be a string.', $name));
         }
 
         return $value;

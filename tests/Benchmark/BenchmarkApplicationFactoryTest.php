@@ -30,7 +30,8 @@ class BenchmarkApplicationFactoryTest extends TestCase
             'Benchmark morphological parsing with an Igo dictionary.',
             $tester->getDisplay(),
         );
-        $this->assertStringContainsString('dictionary', $tester->getDisplay());
+        $this->assertStringContainsString('--dictionary', $tester->getDisplay());
+        $this->assertStringContainsString('-d', $tester->getDisplay());
         $this->assertStringContainsString('[default: "3"]', $tester->getDisplay());
         $this->assertStringContainsString('--file', $tester->getDisplay());
         $this->assertStringContainsString('--output', $tester->getDisplay());

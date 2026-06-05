@@ -12,7 +12,7 @@ use RuntimeException;
 use Symfony\Component\Console\Tester\CommandTester;
 
 /**
- * BuildDicCommand が CLI 引数を解釈し、辞書生成処理を注入された builder へ委譲することを検証するテスト。
+ * BuildDicCommand が CLI オプションを解釈し、辞書生成処理を注入された builder へ委譲することを検証するテスト。
  */
 class BuildDicCommandTest extends TestCase
 {
@@ -43,7 +43,26 @@ class BuildDicCommandTest extends TestCase
     }
 
     /**
-     * 必須引数と任意 delimiter を builder に渡し、成功終了することを確認する。
+     * 辞書生成に必要な値を、位置引数ではなく短縮名付きオプションとして発見できることを確認する。
+     */
+    public function testConfigureDefinesShortOptionsForBuildInputs(): void
+    {
+        $definition = (new BuildDicCommand(static fn(): DictionaryBuilder => new RecordingDictionaryBuilder(
+            new DictionaryBuilderCallLog(),
+        )))->getDefinition();
+
+        $this->assertFalse($definition->hasArgument('output-directory'));
+        $this->assertFalse($definition->hasArgument('input-directory'));
+        $this->assertFalse($definition->hasArgument('encoding'));
+        $this->assertFalse($definition->hasArgument('delimiter'));
+        $this->assertSame('o', $definition->getOption('output')->getShortcut());
+        $this->assertSame('i', $definition->getOption('input')->getShortcut());
+        $this->assertSame('e', $definition->getOption('encoding')->getShortcut());
+        $this->assertSame('d', $definition->getOption('delimiter')->getShortcut());
+    }
+
+    /**
+     * 必須オプションと任意 delimiter を builder に渡し、成功終了することを確認する。
      */
     public function testExecuteDelegatesArgumentsToBuilder(): void
     {
@@ -54,10 +73,10 @@ class BuildDicCommandTest extends TestCase
 
         $tester = new CommandTester($command);
         $statusCode = $tester->execute([
-            'output-directory' => '/tmp/igo-out',
-            'input-directory' => '/tmp/igo-in',
-            'encoding' => 'UTF-8',
-            'delimiter' => '|',
+            '-o' => '/tmp/igo-out',
+            '-i' => '/tmp/igo-in',
+            '-e' => 'UTF-8',
+            '-d' => '|',
         ]);
 
         $this->assertSame(0, $statusCode);
@@ -82,9 +101,9 @@ class BuildDicCommandTest extends TestCase
 
         $tester = new CommandTester($command);
         $statusCode = $tester->execute([
-            'output-directory' => '/tmp/igo-out',
-            'input-directory' => '/tmp/igo-in',
-            'encoding' => 'UTF-8',
+            '--output' => '/tmp/igo-out',
+            '--input' => '/tmp/igo-in',
+            '--encoding' => 'UTF-8',
         ]);
 
         $this->assertSame(0, $statusCode);
@@ -104,13 +123,34 @@ class BuildDicCommandTest extends TestCase
         $tester = new CommandTester($command);
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('argument "delimiter" must be a single-character string.');
+        $this->expectExceptionMessage('option "--delimiter" must be a single-character string.');
 
         $tester->execute([
-            'output-directory' => '/tmp/igo-out',
-            'input-directory' => '/tmp/igo-in',
-            'encoding' => 'UTF-8',
-            'delimiter' => '||',
+            '--output' => '/tmp/igo-out',
+            '--input' => '/tmp/igo-in',
+            '--encoding' => 'UTF-8',
+            '--delimiter' => '||',
+        ]);
+    }
+
+    /**
+     * 必須オプションが欠けた場合は、builder 実行前に CLI 入力エラーとして拒否する。
+     */
+    public function testExecuteFailsWhenRequiredOptionIsMissing(): void
+    {
+        $calls = new DictionaryBuilderCallLog();
+        $command = new BuildDicCommand(static function () use ($calls): DictionaryBuilder {
+            return new RecordingDictionaryBuilder($calls);
+        });
+
+        $tester = new CommandTester($command);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('option "--input" must be a non-empty string.');
+
+        $tester->execute([
+            '--output' => '/tmp/igo-out',
+            '--encoding' => 'UTF-8',
         ]);
     }
 }
