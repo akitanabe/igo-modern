@@ -5,5 +5,3 @@ parameters:
         - src
     bootstrapFiles:
         - vendor/autoload.php
-    parallel:
-        maximumNumberOfProcesses: 1
