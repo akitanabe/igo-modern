@@ -254,5 +254,7 @@ composer dump-autoload
 Igo Modern は MIT License で配布します。詳しくは `LICENSE` を参照してください。
 
 このソフトウェアは [siahr/igo-php](https://github.com/siahr/igo-php) と
-Java 版 Igo の成果を参考にしています。
+Java 版 Igo の成果を参考にしています。辞書生成機能は、Java 版 Igo の
+`BuildDic`、辞書生成、double-array trie 生成の実装を参考にし、PHP 8 の型付きコードと
+既存 runtime reader のバイナリ契約に合わせて移植しています。
 旧 Igo-php のライセンス表記も `LICENSE` にまとめています。
