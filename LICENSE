@@ -1,10 +1,11 @@
-The MIT License
+MIT License
 
-Copyright 2026, Igo Modern contributors
-Copyright 2011, Toshio HIRAI <toshio.hirai@gmail.com>
-(This software is based on Igo Java Version (c) Takeru Ohta <phjgt308@gmail.com>)
+Copyright (c) 2026 akitanabe
+Copyright (c) 2011 Toshio HIRAI
 
-The legacy Igo-php notice above is retained from:
+This software is based on Igo Java Version (c) Takeru Ohta.
+
+This project is a fork and modernization of siahr/igo-php:
 https://github.com/siahr/igo-php
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
