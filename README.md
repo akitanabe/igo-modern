@@ -78,7 +78,7 @@ vendor/bin/igo -d /path/to/igo-dic -i "すもももももももものうち"
 
 解析対象の文字列は `-i` / `--input`、解析対象テキストを含むファイルのパスは `-f` / `--file` で指定します。辞書ディレクトリは `-d` / `--dictionary` で指定します。
 
-出力エンコーディングを明示したい場合は、`--encoding` オプション、または旧 CLI 互換の `IGO_OUTPUT_ENCODING` 環境変数を使用できます。
+出力エンコーディングを明示したい場合は、`--encoding` オプションを使用できます。
 
 ```bash
 vendor/bin/igo --dictionary=/path/to/igo-dic --file=input.txt --encoding=UTF-8

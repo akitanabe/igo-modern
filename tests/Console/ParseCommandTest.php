@@ -16,9 +16,6 @@ use Symfony\Component\Console\Tester\CommandTester;
  */
 class ParseCommandTest extends TestCase
 {
-    /** 環境変数の変更前状態を保持し、テスト間の副作用を避ける。 */
-    private false|string $originalOutputEncoding;
-
     /**
      * Parser factory は必須依存として扱い、null による標準 Parser 生成を constructor に隠さないことを確認する。
      */
@@ -61,29 +58,6 @@ class ParseCommandTest extends TestCase
     }
 
     /**
-     * 旧 CLI 互換の出力エンコーディング環境変数を退避し、各テストを独立させる。
-     */
-    protected function setUp(): void
-    {
-        $this->originalOutputEncoding = getenv('IGO_OUTPUT_ENCODING');
-        putenv('IGO_OUTPUT_ENCODING');
-    }
-
-    /**
-     * 退避した環境変数を復元し、後続テストや実行環境への影響を残さない。
-     */
-    protected function tearDown(): void
-    {
-        if ($this->originalOutputEncoding === false) {
-            putenv('IGO_OUTPUT_ENCODING');
-
-            return;
-        }
-
-        putenv('IGO_OUTPUT_ENCODING=' . $this->originalOutputEncoding);
-    }
-
-    /**
      * 引数で受け取ったテキストを解析し、旧 CLI と同じタブ区切り形式で出力することを確認する。
      */
     public function testExecuteParsesInlineTextAndWritesLegacyFormat(): void
@@ -111,11 +85,10 @@ class ParseCommandTest extends TestCase
     }
 
     /**
-     * 第 2 引数がファイルパスの場合は内容を読み込み、環境変数の出力エンコーディングを使うことを確認する。
+     * ファイル入力でも出力エンコーディング未指定時は既定の辞書エンコーディングを使うことを確認する。
      */
-    public function testExecuteReadsTextFileAndUsesEnvironmentEncoding(): void
+    public function testExecuteReadsTextFileWithDefaultOutputEncoding(): void
     {
-        putenv('IGO_OUTPUT_ENCODING=SJIS');
         $textFile = tempnam(sys_get_temp_dir(), 'igo-console-');
         $this->assertIsString($textFile);
         $this->assertSame(5, file_put_contents($textFile, 'hello'));
@@ -124,7 +97,7 @@ class ParseCommandTest extends TestCase
             new Morpheme('hello', 'feature', 0),
         ]);
         $command = new ParseCommand(function (string $dataDir, ?string $outputEncoding) use ($parser): Parser {
-            $this->assertSame('SJIS', $outputEncoding);
+            $this->assertNull($outputEncoding);
 
             return $parser;
         });

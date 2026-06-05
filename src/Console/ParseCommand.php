@@ -160,7 +160,7 @@ class ParseCommand extends Command
     }
 
     /**
-     * CLI オプションを優先し、未指定時は旧 CLI 互換の環境変数から出力エンコーディングを決める。
+     * CLI オプションで明示された出力エンコーディングだけを任意設定として取り出す。
      */
     private function outputEncoding(InputInterface $input): ?string
     {
@@ -170,8 +170,6 @@ class ParseCommand extends Command
             return $encoding;
         }
 
-        $environmentEncoding = getenv('IGO_OUTPUT_ENCODING');
-
-        return $environmentEncoding === false || $environmentEncoding === '' ? null : $environmentEncoding;
+        return null;
     }
 }
