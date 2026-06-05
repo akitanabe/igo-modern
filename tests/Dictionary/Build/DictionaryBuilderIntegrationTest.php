@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace IgoModern\Tests\Dictionary\Build;
 
 use IgoModern\Analysis\ViterbiNode;
+use IgoModern\Dictionary\Binary\BinaryConnectionMatrix;
+use IgoModern\Dictionary\Binary\BinaryWordDictionary;
 use IgoModern\Dictionary\Build\DictionaryBuilder;
 use IgoModern\Dictionary\CharCategory;
-use IgoModern\Dictionary\Matrix;
 use IgoModern\Dictionary\Trie\CommonPrefixCallback;
 use IgoModern\Dictionary\Trie\Searcher;
-use IgoModern\Dictionary\WordDic;
 use IgoModern\Dictionary\WordDicCallback;
 use IgoModern\Igo;
 use PHPUnit\Framework\TestCase;
@@ -91,7 +91,7 @@ class DictionaryBuilderIntegrationTest extends TestCase
         $this->assertDictionaryFilesExist($outputDirectory);
 
         $wordCallback = new CapturingIntegrationWordCallback();
-        WordDic::fromDataDir($outputDirectory)->search($this->utf16CodeUnits('猫AB'), 0, $wordCallback);
+        BinaryWordDictionary::fromDataDir($outputDirectory)->search($this->utf16CodeUnits('猫AB'), 0, $wordCallback);
 
         $prefixCallback = new CapturingIntegrationPrefixCallback();
         Searcher::fromFile($outputDirectory . '/word2id')->eachCommonPrefix(
@@ -100,7 +100,7 @@ class DictionaryBuilderIntegrationTest extends TestCase
             $prefixCallback,
         );
 
-        $matrix = Matrix::fromDataDir($outputDirectory);
+        $matrix = BinaryConnectionMatrix::fromDataDir($outputDirectory);
         $category = CharCategory::fromDataDir($outputDirectory);
 
         $this->assertSame([[3, 0, 1, -100, 0, 0, false]], $wordCallback->nodeSummaries());

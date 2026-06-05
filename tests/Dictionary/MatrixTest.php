@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace IgoModern\Tests\Dictionary;
 
-use IgoModern\Dictionary\Matrix;
+use IgoModern\Dictionary\Binary\BinaryConnectionMatrix;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Matrix が辞書ディレクトリ内の連接コスト表を読み取る挙動を検証するテスト。
+ * BinaryConnectionMatrix が辞書ディレクトリ内の連接コスト表を読み取る挙動を検証するテスト。
  */
 class MatrixTest extends TestCase
 {
@@ -38,7 +38,7 @@ class MatrixTest extends TestCase
      */
     public function testLinkCostReadsCostByLeftAndRightIds(): void
     {
-        $matrix = Matrix::fromDataDir($this->createDictionaryDirectory(3, 2, [10, 20, 30, -5, -6, -7]));
+        $matrix = BinaryConnectionMatrix::fromDataDir($this->createDictionaryDirectory(3, 2, [10, 20, 30, -5, -6, -7]));
 
         $this->assertSame(10, $matrix->linkCost(0, 0));
         $this->assertSame(30, $matrix->linkCost(2, 0));
@@ -51,7 +51,7 @@ class MatrixTest extends TestCase
      */
     public function testLinkCostUsesHeaderSizesAsMatrixDimensions(): void
     {
-        $matrix = Matrix::fromDataDir($this->createDictionaryDirectory(2, 3, [1, 2, 3, 4, 5, 6, 999]));
+        $matrix = BinaryConnectionMatrix::fromDataDir($this->createDictionaryDirectory(2, 3, [1, 2, 3, 4, 5, 6, 999]));
 
         $this->assertSame(1, $matrix->linkCost(0, 0));
         $this->assertSame(4, $matrix->linkCost(1, 1));

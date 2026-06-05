@@ -25,10 +25,12 @@ class CharCategory
 
     /**
      * 辞書ディレクトリからカテゴリ定義と文字コード別のカテゴリ・互換性表を読み込む。
+     *
+     * $reduce は配列の実体化方式（true=遅延読み / false=常駐）を選ぶ内部限定の引数。
      */
-    public static function fromDataDir(string $dataDir): self
+    public static function fromDataDir(string $dataDir, bool $reduce = true): self
     {
-        $stream = FileMappedInputStream::fromFile($dataDir . '/code2category');
+        $stream = FileMappedInputStream::fromFile($dataDir . '/code2category', $reduce);
 
         try {
             $count = intdiv($stream->size(), 4 * 2);

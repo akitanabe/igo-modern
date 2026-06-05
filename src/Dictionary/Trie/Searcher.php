@@ -28,10 +28,12 @@ class Searcher
 
     /**
      * 辞書バイナリから double-array trie と tail 情報を復元する。
+     *
+     * $reduce は配列の実体化方式（true=遅延読み / false=常駐）を選ぶ内部限定の引数。
      */
-    public static function fromFile(string $filePath): self
+    public static function fromFile(string $filePath, bool $reduce = true): self
     {
-        $stream = FileMappedInputStream::fromFile($filePath);
+        $stream = FileMappedInputStream::fromFile($filePath, $reduce);
 
         try {
             $nodeSize = $stream->getInt();

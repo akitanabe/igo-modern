@@ -6,13 +6,14 @@ namespace IgoModern\Tests\Dictionary;
 
 use IgoModern\Analysis\ViterbiNode;
 use IgoModern\Binary\IntDynamicArray;
-use IgoModern\Dictionary\WordDic;
+use IgoModern\Binary\IntMemoryArray;
+use IgoModern\Dictionary\Binary\BinaryWordDictionary;
 use IgoModern\Dictionary\WordDicCallback;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
 
 /**
- * WordDic が単語辞書ファイル群から候補ノードと素性データを復元する挙動を検証するテスト。
+ * BinaryWordDictionary が単語辞書ファイル群から候補ノードと素性データを復元する挙動を検証するテスト。
  */
 class WordDicTest extends TestCase
 {
@@ -44,7 +45,7 @@ class WordDicTest extends TestCase
      */
     public function testSearchExpandsTrieMatchesIntoWordNodes(): void
     {
-        $wordDic = WordDic::fromDataDir($this->createDictionaryDirectory());
+        $wordDic = BinaryWordDictionary::fromDataDir($this->createDictionaryDirectory());
         $callback = new CapturingWordDicCallback();
 
         $wordDic->search([10, 20, 30, 99], 0, $callback);
@@ -60,14 +61,14 @@ class WordDicTest extends TestCase
     }
 
     /**
-     * searchFromTrieId が指定された trie ID の単語範囲を未知語用の長さと空白フラグで通知することを確認する。
+     * callWordRange が指定された trie ID の単語範囲を未知語用の長さと空白フラグで通知することを確認する。
      */
-    public function testSearchFromTrieIdUsesGivenRangeAndSpaceFlag(): void
+    public function testCallWordRangeUsesGivenRangeAndSpaceFlag(): void
     {
-        $wordDic = WordDic::fromDataDir($this->createDictionaryDirectory());
+        $wordDic = BinaryWordDictionary::fromDataDir($this->createDictionaryDirectory());
         $callback = new CapturingWordDicCallback();
 
-        $wordDic->searchFromTrieId(0, 5, 4, true, $callback);
+        $wordDic->callWordRange(0, 5, 4, true, $callback);
 
         $this->assertNodeSummaries(
             [
@@ -83,7 +84,7 @@ class WordDicTest extends TestCase
      */
     public function testWordDataReturnsFeatureBytesByWordOffsets(): void
     {
-        $wordDic = WordDic::fromDataDir($this->createDictionaryDirectory());
+        $wordDic = BinaryWordDictionary::fromDataDir($this->createDictionaryDirectory());
 
         $this->assertSame($this->packValues('S', [1000, 1001]), $wordDic->wordData(0));
         $this->assertSame($this->packValues('S', [2000]), $wordDic->wordData(1));
@@ -91,15 +92,19 @@ class WordDicTest extends TestCase
     }
 
     /**
-     * WordDic が trie ID から単語 ID 範囲を引く indices を PHP 配列ではなく dynamic reader として保持することを確認する。
+     * indices の実体化が reduce で切り替わり、遅延読み（FileStorage 相当）は IntDynamicArray、
+     * 常駐（MemoryStorage 相当）は IntMemoryArray になることを確認する。
      */
-    public function testWordRangeIndicesAreReadDynamically(): void
+    public function testWordRangeIndicesMaterializeAccordingToReduceMode(): void
     {
-        $wordDic = WordDic::fromDataDir($this->createDictionaryDirectory());
-        $indicesProperty = new ReflectionProperty(WordDic::class, 'indices');
+        $indicesProperty = new ReflectionProperty(BinaryWordDictionary::class, 'indices');
         $indicesProperty->setAccessible(true);
 
-        $this->assertInstanceOf(IntDynamicArray::class, $indicesProperty->getValue($wordDic));
+        $dynamic = BinaryWordDictionary::fromDataDir($this->createDictionaryDirectory());
+        $resident = BinaryWordDictionary::fromDataDir($this->createDictionaryDirectory(), false);
+
+        $this->assertInstanceOf(IntDynamicArray::class, $indicesProperty->getValue($dynamic));
+        $this->assertInstanceOf(IntMemoryArray::class, $indicesProperty->getValue($resident));
     }
 
     /**

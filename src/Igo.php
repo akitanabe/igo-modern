@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace IgoModern;
 
 use IgoModern\Analysis\Tagger;
+use IgoModern\Dictionary\Contract\DictionaryStorage;
 use Throwable;
 
 /**
@@ -18,6 +19,14 @@ class Igo implements Parser
     public function __construct(
         private Tagger $tagger,
     ) {}
+
+    /**
+     * 辞書ストレージ抽象から公開 API を構築する正式な拡張点。
+     */
+    public static function fromStorage(DictionaryStorage $storage, ?string $outputEncoding = null): self
+    {
+        return new self(Tagger::fromStorage($storage, $outputEncoding));
+    }
 
     /**
      * 辞書ディレクトリと出力エンコーディングから公開 API を構築する。

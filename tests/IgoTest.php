@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace IgoModern\Tests;
 
 use IgoModern\Analysis\Tagger;
+use IgoModern\Dictionary\Storage\FileStorage;
+use IgoModern\Dictionary\Storage\MemoryStorage;
 use IgoModern\Igo;
 use IgoModern\Morpheme;
 use PHPUnit\Framework\TestCase;
@@ -70,6 +72,21 @@ class IgoTest extends TestCase
         $igo = Igo::fromDictDir($this->createDictionaryDirectory(1), null);
 
         $this->assertSame(['A', 'B'], $igo->wakati('A B'));
+    }
+
+    /**
+     * FileStorage と MemoryStorage は配列の実体化方式だけが異なり、解析結果は同一であることを確認する。
+     */
+    public function testFileStorageAndMemoryStorageProduceSameResult(): void
+    {
+        $directory = $this->createDictionaryDirectory(2);
+
+        $fileResult = Igo::fromStorage(FileStorage::fromDataDir($directory))->parse('AB');
+        $memoryResult = Igo::fromStorage(MemoryStorage::fromDataDir($directory))->parse('AB');
+
+        $this->assertEquals($fileResult, $memoryResult);
+        $this->assertSame('AB', $memoryResult[0]->surface);
+        $this->assertSame('ALPHA', $memoryResult[0]->feature);
     }
 
     /**

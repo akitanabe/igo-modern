@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace IgoModern\Tests\Dictionary\Build;
 
+use IgoModern\Dictionary\Binary\BinaryConnectionMatrix;
 use IgoModern\Dictionary\Build\MatrixBuilder;
-use IgoModern\Dictionary\Matrix;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 /**
- * MatrixBuilder が matrix.def から runtime Matrix 互換の matrix.bin を生成することを検証するテスト。
+ * MatrixBuilder が matrix.def から runtime BinaryConnectionMatrix 互換の matrix.bin を生成することを検証するテスト。
  */
 class MatrixBuilderTest extends TestCase
 {
@@ -40,7 +40,7 @@ class MatrixBuilderTest extends TestCase
     /**
      * matrix.def の MeCab 順コスト表を runtime が読む right-major 配列へ変換できることを確認する。
      */
-    public function testBuildWritesMatrixBinReadableByRuntimeMatrix(): void
+    public function testBuildWritesMatrixBinReadableByRuntimeBinaryConnectionMatrix(): void
     {
         $inputDirectory = $this->createTemporaryDirectory('igo-matrix-in-');
         $outputDirectory = $this->createTemporaryDirectory('igo-matrix-out-');
@@ -48,7 +48,7 @@ class MatrixBuilderTest extends TestCase
 
         (new MatrixBuilder())->build($outputDirectory, $inputDirectory, 'EUC-JP', ',');
 
-        $matrix = Matrix::fromDataDir($outputDirectory);
+        $matrix = BinaryConnectionMatrix::fromDataDir($outputDirectory);
         $this->assertSame(10, $matrix->linkCost(0, 0));
         $this->assertSame(30, $matrix->linkCost(2, 0));
         $this->assertSame(-5, $matrix->linkCost(0, 1));
