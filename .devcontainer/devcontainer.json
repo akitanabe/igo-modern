@@ -5,14 +5,16 @@
     "context": "."
   },
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
-  "containerEnv": {
-    "IGO_OUTPUT_ENCODING": "UTF-8"
-  },
   "customizations": {
     "vscode": {
       "extensions": [
         "DEVSENSE.phptools-vscode",
-        "DEVSENSE.profiler-php-vscode"
+        "DEVSENSE.profiler-php-vscode",
+        "tamasfe.even-better-toml",
+        "-bmewburn.vscode-intelephense-client",
+        "-xdebug.php-debug",
+        "-mrmlnc.vscode-apache",
+        "-dbaeumer.vscode-eslint"
       ]
     }
   },

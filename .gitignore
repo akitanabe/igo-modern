@@ -38,3 +38,6 @@ Thumbs.db
 # Benchmark result files
 /bench/results/*
 !/bench/results/.gitkeep
+
+# Lock files
+devcontainer-lock.json
