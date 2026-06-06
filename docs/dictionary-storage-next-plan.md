@@ -39,3 +39,8 @@ Dynamic 配列へ渡すよう構成を変える。
 ### 段階3 — loader への責務集約
 `FileMappedInputStream` の責務（順次読み込み + 実体化ポリシー選択）を Storage 内部 loader へ移し、
 Binary namespace からファイルシステム・実体化ポリシーの知識を取り除く。
+
+実装方針は[loader への責務集約プラン](dictionary-storage-loader-consolidation-plan.md)に基づく
+（`Binary\Contract` に `InputStream` / `InputStreamFactory` 契約を追加し、`FileMappedInputStream` と
+`ArrayMaterialization` を Storage へ移管。辞書クラスの `fromDataDir` を契約依存へ切り替え、
+Binary ← Dictionary ← Storage の依存方向を維持する）。
