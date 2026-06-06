@@ -26,11 +26,15 @@ Dynamic 配列を具象 `PagedBinaryReader` 依存から契約依存へ切り替
 （`src/Binary/Contract/ByteReader.php` 追加、`PagedBinaryReader` が同契約を実装、
 Dynamic 配列と `WordDataReader` を契約依存へ切り替え）。
 
-### 段階2 — ファイル reader の Storage 移管
+### 段階2 — ファイル reader の Storage 移管 ✅ 実装済み
 `PagedBinaryReader` を Storage 内部へ移し、Storage がファイル reader を生成して
 Dynamic 配列へ渡すよう構成を変える。
 
-実装プランは[ファイル reader の Storage 移管プラン](dictionary-storage-reader-migration-plan.md)を参照。
+実装は[ファイル reader の Storage 移管プラン](dictionary-storage-reader-migration-plan.md)に基づき完了
+（`PagedBinaryReader` を `IgoModern\Storage` へ移動、`ByteReaderFactory` 契約と
+`PagedByteReaderFactory` を追加、`FileMappedInputStream` 経由で各辞書へ factory を注入、
+`BinaryStorage::loadTrio` を factory の唯一の生成点とし、`src/Binary`・`src/Dictionary` から
+`PagedBinaryReader` 参照を除去）。
 
 ### 段階3 — loader への責務集約
 `FileMappedInputStream` の責務（順次読み込み + 実体化ポリシー選択）を Storage 内部 loader へ移し、
