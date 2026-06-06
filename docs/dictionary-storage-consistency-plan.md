@@ -2,7 +2,9 @@
 
 ## ステータス
 
-未着手（計画のみ）。直前の「[辞書ストレージ抽象化](dictionary-backend-abstraction-plan.md)」（コミット 2e6ebe2）で導入した `DictionaryStorage` 抽象の境界が曖昧なまま残った点を整理し、整合性を高める後続リファクタ。挙動は不変。
+実装済み。直前の「[辞書ストレージ抽象化](dictionary-backend-abstraction-plan.md)」（コミット 2e6ebe2）で導入した `DictionaryStorage` 抽象の境界が曖昧なまま残った点を整理し、整合性を高める後続リファクタ。解析挙動は不変、公開 API は Storage 境界へ縮小。
+
+実装上の差分（計画との相違）: 要求対象に PHP 8.0 を含むため言語の `enum` は使えず、`ArrayMaterialization` は将来 8.1+ の純粋 enum へ機械的移行できる「enum 同形の `final class`」（ケースごとの静的アクセサ `Lazy()` / `Resident()` と `===` 同一性比較、共有インスタンス）として実装した。葉のファクトリ既定値はオブジェクト定数を 8.0 で書けないため `?ArrayMaterialization = null`（null=Lazy）で受ける。`@internal` タグは静的解析との衝突回避のため付与せず、コメント本文で内部用と明示する方針を採った。
 
 ## 背景
 
@@ -163,5 +165,3 @@ rg -n "fromDictDir|tryFromDictDir|bool \\$reduce|IgoModern\\\\Dictionary\\\\Stor
 ### 5. 末尾の余分なコードフェンスを削除する
 
 現在の文書末尾に余分な ````` が残っている。Markdown 表示を崩すため、実装着手前または次の文書整理時に削除する。
-```
-```
