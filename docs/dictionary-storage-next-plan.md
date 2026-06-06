@@ -36,7 +36,7 @@ Dynamic 配列へ渡すよう構成を変える。
 `BinaryStorage::loadTrio` を factory の唯一の生成点とし、`src/Binary`・`src/Dictionary` から
 `PagedBinaryReader` 参照を除去）。
 
-### 段階3 — loader への責務集約
+### 段階3 — loader への責務集約 ✅ 実装済み
 `FileMappedInputStream` の責務（順次読み込み + 実体化ポリシー選択）を Storage 内部 loader へ移し、
 Binary namespace からファイルシステム・実体化ポリシーの知識を取り除く。
 

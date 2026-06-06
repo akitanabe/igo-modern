@@ -6,6 +6,7 @@ namespace IgoModern\Tests\Dictionary;
 
 use IgoModern\Dictionary\Category;
 use IgoModern\Dictionary\CharCategory;
+use IgoModern\Storage\FileInputStreamFactory;
 use IgoModern\Storage\PagedByteReaderFactory;
 use IgoModern\Tests\Support\RecordingByteReaderFactory;
 use PHPUnit\Framework\TestCase;
@@ -53,8 +54,7 @@ class CharCategoryTest extends TestCase
                 [65 => 1, 66 => 2],
                 [65 => 0b0011, 66 => 0b0100],
             ),
-            null,
-            new PagedByteReaderFactory(),
+            FileInputStreamFactory::lazy(new PagedByteReaderFactory()),
         );
 
         $latinA = $category->category(65);
@@ -85,8 +85,7 @@ class CharCategoryTest extends TestCase
                 [65 => 1, 66 => 1, 67 => 1],
                 [65 => 0b0011, 66 => 0b0010, 67 => 0b0100],
             ),
-            null,
-            new PagedByteReaderFactory(),
+            FileInputStreamFactory::lazy(new PagedByteReaderFactory()),
         );
 
         $this->assertTrue($category->isCompatible(65, 66));
@@ -105,7 +104,7 @@ class CharCategoryTest extends TestCase
         );
         $factory = new RecordingByteReaderFactory();
 
-        CharCategory::fromDataDir($directory, null, $factory);
+        CharCategory::fromDataDir($directory, FileInputStreamFactory::lazy($factory));
 
         $openedBaseNames = array_values(array_unique(array_map('basename', $factory->openedFiles)));
 

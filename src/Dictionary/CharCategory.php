@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace IgoModern\Dictionary;
 
-use IgoModern\Binary\ArrayMaterialization;
-use IgoModern\Binary\Contract\ByteReaderFactory;
+use IgoModern\Binary\Contract\InputStreamFactory;
 use IgoModern\Binary\Contract\IntArray;
-use IgoModern\Binary\FileMappedInputStream;
 
 /**
  * 文字コードから未知語カテゴリを引き、同じ未知語として連結できる文字種か判定する。
@@ -28,21 +26,17 @@ class CharCategory
     /**
      * 辞書ディレクトリからカテゴリ定義と文字コード別のカテゴリ・互換性表を読み込む。
      *
-     * 公開構築点は Storage 実装のみ。$materialization は配列の実体化方式（Lazy / Resident）を選ぶ内部限定の引数。
-     * $byteReaderFactory は Lazy 配列が使うファイル reader の生成元で、materialization と並走で渡す内部限定の引数。
+     * 公開構築点は Storage 実装のみ。$streams は実体化方式を内包した stream ファクトリ（Storage が提供）。
      */
-    public static function fromDataDir(
-        string $dataDir,
-        ?ArrayMaterialization $materialization = null,
-        ?ByteReaderFactory $byteReaderFactory = null,
-    ): self {
-        $stream = FileMappedInputStream::fromFile($dataDir . '/code2category', $materialization, $byteReaderFactory);
+    public static function fromDataDir(string $dataDir, InputStreamFactory $streams): self
+    {
+        $stream = $streams->open($dataDir . '/code2category');
 
         try {
             $count = intdiv($stream->size(), 4 * 2);
 
             return new self(
-                self::readCategories($dataDir),
+                self::readCategories($dataDir, $streams),
                 $stream->getIntArrayInstance($count),
                 $stream->getIntArrayInstance($count),
             );
@@ -70,11 +64,20 @@ class CharCategory
     /**
      * char.category の 4 int 1 組のレコードを Category のリストへ変換する。
      *
+     * ByteReader を開かない順次読みでファイル全体を int 配列として読み切り、char.category 用 stream を確実に閉じる。
+     *
      * @return list<Category>
      */
-    private static function readCategories(string $dataDir): array
+    private static function readCategories(string $dataDir, InputStreamFactory $streams): array
     {
-        $data = FileMappedInputStream::getIntArrayFromFile($dataDir . '/char.category');
+        $stream = $streams->open($dataDir . '/char.category');
+
+        try {
+            $data = $stream->getIntArray(intdiv($stream->size(), 4));
+        } finally {
+            $stream->close();
+        }
+
         $size = intdiv(count($data), 4);
         $categories = [];
 

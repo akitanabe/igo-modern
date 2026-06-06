@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace IgoModern\Dictionary\Trie;
 
-use IgoModern\Binary\ArrayMaterialization;
-use IgoModern\Binary\Contract\ByteReaderFactory;
 use IgoModern\Binary\Contract\CharArray;
+use IgoModern\Binary\Contract\InputStreamFactory;
 use IgoModern\Binary\Contract\IntArray;
 use IgoModern\Binary\Contract\ShortArray;
-use IgoModern\Binary\FileMappedInputStream;
 
 /**
  * double-array trie 辞書から入力キーに一致する共通接頭辞を探索する。
@@ -31,15 +29,12 @@ class Searcher
     /**
      * 辞書バイナリから double-array trie と tail 情報を復元する。
      *
-     * 公開構築点は Storage 実装のみ。$materialization は配列の実体化方式（Lazy / Resident）を選ぶ内部限定の引数。
-     * $byteReaderFactory は Lazy 配列が使うファイル reader の生成元で、materialization と並走で渡す内部限定の引数。
+     * 公開構築点は Storage 実装のみ。$streams は実体化方式を内包した stream ファクトリ（Storage が提供）で、
+     * 「ファイルを開いて順次読み、実体化方式に応じた配列を返す」プリミティブだけを契約として受け取る。
      */
-    public static function fromFile(
-        string $filePath,
-        ?ArrayMaterialization $materialization = null,
-        ?ByteReaderFactory $byteReaderFactory = null,
-    ): self {
-        $stream = FileMappedInputStream::fromFile($filePath, $materialization, $byteReaderFactory);
+    public static function fromFile(string $filePath, InputStreamFactory $streams): self
+    {
+        $stream = $streams->open($filePath);
 
         try {
             $nodeSize = $stream->getInt();

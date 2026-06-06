@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace IgoModern\Tests\Dictionary;
 
 use IgoModern\Analysis\ViterbiNode;
-use IgoModern\Binary\ArrayMaterialization;
 use IgoModern\Binary\IntDynamicArray;
 use IgoModern\Binary\IntMemoryArray;
 use IgoModern\Dictionary\Binary\BinaryWordDictionary;
 use IgoModern\Dictionary\WordDicCallback;
+use IgoModern\Storage\FileInputStreamFactory;
 use IgoModern\Storage\PagedByteReaderFactory;
 use IgoModern\Tests\Support\RecordingByteReaderFactory;
 use PHPUnit\Framework\TestCase;
@@ -50,7 +50,7 @@ class WordDicTest extends TestCase
     {
         $wordDic = BinaryWordDictionary::fromDataDir(
             $this->createDictionaryDirectory(),
-            null,
+            FileInputStreamFactory::lazy(new PagedByteReaderFactory()),
             new PagedByteReaderFactory(),
         );
         $callback = new CapturingWordDicCallback();
@@ -74,7 +74,7 @@ class WordDicTest extends TestCase
     {
         $wordDic = BinaryWordDictionary::fromDataDir(
             $this->createDictionaryDirectory(),
-            null,
+            FileInputStreamFactory::lazy(new PagedByteReaderFactory()),
             new PagedByteReaderFactory(),
         );
         $callback = new CapturingWordDicCallback();
@@ -97,7 +97,7 @@ class WordDicTest extends TestCase
     {
         $wordDic = BinaryWordDictionary::fromDataDir(
             $this->createDictionaryDirectory(),
-            null,
+            FileInputStreamFactory::lazy(new PagedByteReaderFactory()),
             new PagedByteReaderFactory(),
         );
 
@@ -117,12 +117,12 @@ class WordDicTest extends TestCase
 
         $dynamic = BinaryWordDictionary::fromDataDir(
             $this->createDictionaryDirectory(),
-            null,
+            FileInputStreamFactory::lazy(new PagedByteReaderFactory()),
             new PagedByteReaderFactory(),
         );
         $resident = BinaryWordDictionary::fromDataDir(
             $this->createDictionaryDirectory(),
-            ArrayMaterialization::Resident(),
+            FileInputStreamFactory::resident(new PagedByteReaderFactory()),
             new PagedByteReaderFactory(),
         );
 
@@ -139,7 +139,7 @@ class WordDicTest extends TestCase
         $directory = $this->createDictionaryDirectory();
         $factory = new RecordingByteReaderFactory();
 
-        BinaryWordDictionary::fromDataDir($directory, null, $factory);
+        BinaryWordDictionary::fromDataDir($directory, FileInputStreamFactory::lazy($factory), $factory);
 
         $openedBaseNames = array_values(array_unique(array_map('basename', $factory->openedFiles)));
         sort($openedBaseNames);

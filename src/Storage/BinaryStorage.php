@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace IgoModern\Storage;
 
-use IgoModern\Binary\ArrayMaterialization;
 use IgoModern\Dictionary\Binary\BinaryConnectionMatrix;
 use IgoModern\Dictionary\Binary\BinaryUnknownWordDictionary;
 use IgoModern\Dictionary\Binary\BinaryWordDictionary;
@@ -59,14 +58,15 @@ abstract class BinaryStorage implements DictionaryStorage
      */
     final protected static function loadTrio(string $dir, ArrayMaterialization $materialization): static
     {
-        // ファイル reader の生成点は storage に閉じ、各辞書へ materialization と並走で注入する。
+        // ファイル reader と stream の生成点は storage に閉じ、各辞書へ InputStreamFactory として注入する。
         $byteReaderFactory = new PagedByteReaderFactory();
-        $word = BinaryWordDictionary::fromDataDir($dir, $materialization, $byteReaderFactory);
+        $streams = new FileInputStreamFactory($materialization, $byteReaderFactory);
+        $word = BinaryWordDictionary::fromDataDir($dir, $streams, $byteReaderFactory);
 
         return new static(
             $word,
-            BinaryUnknownWordDictionary::fromDataDir($dir, $word, $materialization, $byteReaderFactory),
-            BinaryConnectionMatrix::fromDataDir($dir, $materialization, $byteReaderFactory),
+            BinaryUnknownWordDictionary::fromDataDir($dir, $word, $streams),
+            BinaryConnectionMatrix::fromDataDir($dir, $streams),
         );
     }
 }

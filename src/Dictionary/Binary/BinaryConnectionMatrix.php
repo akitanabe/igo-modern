@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace IgoModern\Dictionary\Binary;
 
-use IgoModern\Binary\ArrayMaterialization;
-use IgoModern\Binary\Contract\ByteReaderFactory;
+use IgoModern\Binary\Contract\InputStreamFactory;
 use IgoModern\Binary\Contract\ShortArray;
-use IgoModern\Binary\FileMappedInputStream;
 use IgoModern\Dictionary\Contract\ConnectionMatrix;
 
 /**
@@ -26,15 +24,11 @@ class BinaryConnectionMatrix implements ConnectionMatrix
     /**
      * 辞書ディレクトリの matrix.bin を開き、ヘッダサイズとコスト表を読み込む。
      *
-     * 公開構築点は Storage 実装のみ。$materialization は配列の実体化方式（Lazy / Resident）を選ぶ内部限定の引数。
-     * $byteReaderFactory は Lazy 配列が使うファイル reader の生成元で、materialization と並走で渡す内部限定の引数。
+     * 公開構築点は Storage 実装のみ。$streams は実体化方式を内包した stream ファクトリ（Storage が提供）。
      */
-    public static function fromDataDir(
-        string $dataDir,
-        ?ArrayMaterialization $materialization = null,
-        ?ByteReaderFactory $byteReaderFactory = null,
-    ): self {
-        $stream = FileMappedInputStream::fromFile($dataDir . '/matrix.bin', $materialization, $byteReaderFactory);
+    public static function fromDataDir(string $dataDir, InputStreamFactory $streams): self
+    {
+        $stream = $streams->open($dataDir . '/matrix.bin');
 
         try {
             $leftSize = $stream->getInt();

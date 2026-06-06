@@ -6,6 +6,7 @@ namespace IgoModern\Tests\Dictionary\Build;
 
 use IgoModern\Dictionary\Binary\BinaryConnectionMatrix;
 use IgoModern\Dictionary\Build\MatrixBuilder;
+use IgoModern\Storage\FileInputStreamFactory;
 use IgoModern\Storage\PagedByteReaderFactory;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -49,7 +50,10 @@ class MatrixBuilderTest extends TestCase
 
         (new MatrixBuilder())->build($outputDirectory, $inputDirectory, 'EUC-JP', ',');
 
-        $matrix = BinaryConnectionMatrix::fromDataDir($outputDirectory, null, new PagedByteReaderFactory());
+        $matrix = BinaryConnectionMatrix::fromDataDir(
+            $outputDirectory,
+            FileInputStreamFactory::lazy(new PagedByteReaderFactory()),
+        );
         $this->assertSame(10, $matrix->linkCost(0, 0));
         $this->assertSame(30, $matrix->linkCost(2, 0));
         $this->assertSame(-5, $matrix->linkCost(0, 1));

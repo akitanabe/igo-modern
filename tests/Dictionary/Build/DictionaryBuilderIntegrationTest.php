@@ -13,6 +13,7 @@ use IgoModern\Dictionary\Trie\CommonPrefixCallback;
 use IgoModern\Dictionary\Trie\Searcher;
 use IgoModern\Dictionary\WordDicCallback;
 use IgoModern\Igo;
+use IgoModern\Storage\FileInputStreamFactory;
 use IgoModern\Storage\FileStorage;
 use IgoModern\Storage\PagedByteReaderFactory;
 use PHPUnit\Framework\TestCase;
@@ -93,23 +94,24 @@ class DictionaryBuilderIntegrationTest extends TestCase
         $this->assertDictionaryFilesExist($outputDirectory);
 
         $factory = new PagedByteReaderFactory();
+        $streams = FileInputStreamFactory::lazy($factory);
 
         $wordCallback = new CapturingIntegrationWordCallback();
-        BinaryWordDictionary::fromDataDir($outputDirectory, null, $factory)->search(
+        BinaryWordDictionary::fromDataDir($outputDirectory, $streams, $factory)->search(
             $this->utf16CodeUnits('猫AB'),
             0,
             $wordCallback,
         );
 
         $prefixCallback = new CapturingIntegrationPrefixCallback();
-        Searcher::fromFile($outputDirectory . '/word2id', null, $factory)->eachCommonPrefix(
+        Searcher::fromFile($outputDirectory . '/word2id', $streams)->eachCommonPrefix(
             $this->utf16CodeUnits("\002ALPHA"),
             0,
             $prefixCallback,
         );
 
-        $matrix = BinaryConnectionMatrix::fromDataDir($outputDirectory, null, $factory);
-        $category = CharCategory::fromDataDir($outputDirectory, null, $factory);
+        $matrix = BinaryConnectionMatrix::fromDataDir($outputDirectory, $streams);
+        $category = CharCategory::fromDataDir($outputDirectory, $streams);
 
         $this->assertSame([[3, 0, 1, -100, 0, 0, false]], $wordCallback->nodeSummaries());
         $this->assertSame([['start' => 0, 'offset' => 6]], $prefixCallback->ranges());

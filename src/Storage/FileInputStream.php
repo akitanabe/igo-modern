@@ -2,21 +2,31 @@
 
 declare(strict_types=1);
 
-namespace IgoModern\Binary;
+namespace IgoModern\Storage;
 
+use IgoModern\Binary\CharDynamicArray;
+use IgoModern\Binary\CharMemoryArray;
 use IgoModern\Binary\Contract\ByteReaderFactory;
 use IgoModern\Binary\Contract\CharArray;
 use IgoModern\Binary\Contract\CharArrayReader;
+use IgoModern\Binary\Contract\InputStream;
 use IgoModern\Binary\Contract\IntArray;
 use IgoModern\Binary\Contract\IntArrayReader;
 use IgoModern\Binary\Contract\ShortArray;
 use IgoModern\Binary\Contract\ShortArrayReader;
+use IgoModern\Binary\IntDynamicArray;
+use IgoModern\Binary\IntMemoryArray;
+use IgoModern\Binary\ShortDynamicArray;
+use IgoModern\Binary\ShortMemoryArray;
 use RuntimeException;
 
 /**
  * 辞書バイナリを現在位置から順に読み、配列実装の入力元にもなるストリーム。
+ *
+ * ファイルシステム操作と実体化方式（Lazy / Resident）の知識を Storage 内へ閉じ、辞書クラスへは
+ * InputStream 契約だけを公開する。Memory 配列の fromReader 用に *ArrayReader も実装する。
  */
-class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArrayReader
+final class FileInputStream implements InputStream, IntArrayReader, ShortArrayReader, CharArrayReader
 {
     /** @var resource バイナリ辞書を順次読むためのファイルハンドルを保持する。 */
     private $file;
@@ -108,32 +118,6 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
     }
 
     /**
-     * ファイル全体を signed int 配列として読み込む。
-     *
-     * @return list<int>
-     */
-    public static function getIntArrayFromFile(string $fileName): array
-    {
-        $stream = self::fromFile($fileName);
-
-        try {
-            return $stream->getIntArray(intdiv($stream->size(), 4));
-        } finally {
-            $stream->close();
-        }
-    }
-
-    /**
-     * 旧実装の static helper 名で、ファイル全体を signed int 配列として読み込む。
-     *
-     * @return list<int>
-     */
-    public static function _getIntArray(string $fileName): array
-    {
-        return self::getIntArrayFromFile($fileName);
-    }
-
-    /**
      * 現在位置から指定件数の signed short を読み込む。
      *
      * @return list<int>
@@ -185,36 +169,6 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
         $this->cur += $count * 2;
 
         return $this->readUnpackedValues($count, 2, 'S');
-    }
-
-    /**
-     * UTF-16 相当の文字数として指定された件数を 2 バイト単位で読み込む。
-     */
-    public function getString(int $count): string
-    {
-        return $this->readBytes($count * 2);
-    }
-
-    /**
-     * ファイル全体を UTF-16 相当の文字列バイト列として読み込む。
-     */
-    public static function getStringFromFile(string $fileName): string
-    {
-        $stream = self::fromFile($fileName);
-
-        try {
-            return $stream->getString(intdiv($stream->size(), 2));
-        } finally {
-            $stream->close();
-        }
-    }
-
-    /**
-     * 旧実装の static helper 名で、ファイル全体を UTF-16 相当の文字列バイト列として読み込む。
-     */
-    public static function _getString(string $fileName): string
-    {
-        return self::getStringFromFile($fileName);
     }
 
     /**

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace IgoModern\Storage;
 
-use IgoModern\Binary\ArrayMaterialization;
-
 /**
  * 辞書配列を遅延読み（DynamicArray）で実体化する、ファイル常駐を避ける storage。
  */
