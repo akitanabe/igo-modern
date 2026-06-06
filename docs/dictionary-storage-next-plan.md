@@ -44,3 +44,14 @@ Binary namespace からファイルシステム・実体化ポリシーの知識
 （`Binary\Contract` に `InputStream` / `InputStreamFactory` 契約を追加し、`FileMappedInputStream` と
 `ArrayMaterialization` を Storage へ移管。辞書クラスの `fromDataDir` を契約依存へ切り替え、
 Binary ← Dictionary ← Storage の依存方向を維持する）。
+
+### 段階4 — runtime 辞書ディレクトリ構造の Storage 集約
+段階3で Storage 側へ移した stream / reader 契約を足場に、runtime 解析で使う辞書ディレクトリ構造
+（`word2id` / `word.dat` / `word.ary.idx` / `word.inf` / `matrix.bin` / `code2category` /
+`char.category` などのファイル配置）を Storage 内部 loader へ寄せる。
+
+実装方針は[runtime 辞書 loader へのディレクトリ構造集約プラン](dictionary-storage-runtime-loader-plan.md)に基づく。
+`BinaryDictionaryLoader` 契約と File/Memory 実装を追加し、runtime 辞書クラスの `fromDataDir` を
+Storage loader へ移す。辞書クラスは構築済み部品を受け取って検索・未知語生成・連接コスト参照を行う
+責務に寄せる。`Word2IdCategoryIdResolver` は今回の対象外とし、`Searcher::fromFile` は
+Build 経路との互換的な構築点として残す。
