@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IgoModern\Benchmark;
 
+use IgoModern\Dictionary\Storage\FileStorage;
 use IgoModern\Igo;
 use IgoModern\Morpheme;
 use IgoModern\Parser;
@@ -32,7 +33,10 @@ class ParseBenchmarkRunner
      */
     public static function createDefault(): self
     {
-        return new self(static fn(string $dictionary): Parser => Igo::fromDictDir($dictionary, 'UTF-8'));
+        return new self(static fn(string $dictionary): Parser => Igo::fromStorage(
+            FileStorage::fromDataDir($dictionary),
+            'UTF-8',
+        ));
     }
 
     /**

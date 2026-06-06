@@ -29,26 +29,6 @@ class Igo implements Parser
     }
 
     /**
-     * 辞書ディレクトリと出力エンコーディングから公開 API を構築する。
-     */
-    public static function fromDictDir(string $dictDir, ?string $outputEncoding = null): self
-    {
-        return new self(Tagger::fromDataDir($dictDir, $outputEncoding));
-    }
-
-    /**
-     * 辞書読み込みに失敗しても例外を投げず、公開 API の利用可否を null で表す。
-     */
-    public static function tryFromDictDir(string $dictDir, ?string $outputEncoding = null): ?self
-    {
-        try {
-            return self::fromDictDir($dictDir, $outputEncoding);
-        } catch (Throwable) {
-            return null;
-        }
-    }
-
-    /**
      * 入力テキストを解析し、形態素列を返す。
      *
      * @return list<Morpheme>

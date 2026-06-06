@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IgoModern\Console;
 
+use IgoModern\Dictionary\Storage\FileStorage;
 use IgoModern\Igo;
 use IgoModern\Parser;
 use RuntimeException;
@@ -40,9 +41,10 @@ class ParseCommand extends Command
      */
     public static function createDefault(): self
     {
-        return new self(
-            static fn(string $dataDir, ?string $outputEncoding): Parser => Igo::fromDictDir($dataDir, $outputEncoding),
-        );
+        return new self(static fn(string $dataDir, ?string $outputEncoding): Parser => Igo::fromStorage(
+            FileStorage::fromDataDir($dataDir),
+            $outputEncoding,
+        ));
     }
 
     /**

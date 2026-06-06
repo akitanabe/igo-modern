@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace IgoModern\Tests\Analysis;
 
 use IgoModern\Analysis\Tagger;
+use IgoModern\Dictionary\Storage\FileStorage;
 use IgoModern\Morpheme;
 use PHPUnit\Framework\TestCase;
 
@@ -49,7 +50,7 @@ class TaggerTest extends TestCase
      */
     public function testParseReturnsMorphemesFromBestPath(): void
     {
-        $tagger = Tagger::fromDataDir($this->createDictionaryDirectory(2), null);
+        $tagger = Tagger::fromStorage(FileStorage::fromDataDir($this->createDictionaryDirectory(2)), null);
 
         $result = $tagger->parse('AB');
 
@@ -65,7 +66,7 @@ class TaggerTest extends TestCase
      */
     public function testParseAppendsToGivenResultAndUsesOutputEncoding(): void
     {
-        $tagger = Tagger::fromDataDir($this->createDictionaryDirectory(1), 'SJIS');
+        $tagger = Tagger::fromStorage(FileStorage::fromDataDir($this->createDictionaryDirectory(1)), 'SJIS');
         $existing = [new Morpheme('seed', 'seed-feature', 99)];
 
         $result = $tagger->parse('A', $existing);
@@ -82,7 +83,7 @@ class TaggerTest extends TestCase
      */
     public function testWakatiSkipsSpaceNodesAndReturnsSurfaces(): void
     {
-        $tagger = Tagger::fromDataDir($this->createDictionaryDirectory(1), null);
+        $tagger = Tagger::fromStorage(FileStorage::fromDataDir($this->createDictionaryDirectory(1)), null);
 
         $this->assertSame(['A', 'B'], $tagger->wakati('A B'));
     }

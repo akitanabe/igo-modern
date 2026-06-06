@@ -8,7 +8,6 @@ use IgoModern\Dictionary\Contract\ConnectionMatrix;
 use IgoModern\Dictionary\Contract\DictionaryStorage;
 use IgoModern\Dictionary\Contract\UnknownWordDictionary;
 use IgoModern\Dictionary\Contract\WordDictionary;
-use IgoModern\Dictionary\Storage\FileStorage;
 use IgoModern\Morpheme;
 use RuntimeException;
 
@@ -53,14 +52,6 @@ class Tagger
             $storage->connectionMatrix(),
             $outputEncoding,
         );
-    }
-
-    /**
-     * 辞書ディレクトリから解析に必要な辞書を読み込む（ファイル常駐回避の FileStorage を既定とする）。
-     */
-    public static function fromDataDir(string $dataDir, ?string $outputEncoding = null): self
-    {
-        return self::fromStorage(FileStorage::fromDataDir($dataDir), $outputEncoding);
     }
 
     /**

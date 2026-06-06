@@ -9,6 +9,7 @@ use IgoModern\Dictionary\Binary\BinaryConnectionMatrix;
 use IgoModern\Dictionary\Binary\BinaryWordDictionary;
 use IgoModern\Dictionary\Build\DictionaryBuilder;
 use IgoModern\Dictionary\CharCategory;
+use IgoModern\Dictionary\Storage\FileStorage;
 use IgoModern\Dictionary\Trie\CommonPrefixCallback;
 use IgoModern\Dictionary\Trie\Searcher;
 use IgoModern\Dictionary\WordDicCallback;
@@ -66,7 +67,7 @@ class DictionaryBuilderIntegrationTest extends TestCase
 
         DictionaryBuilder::standard()->build($outputDirectory, $inputDirectory, 'UTF-8');
 
-        $result = Igo::fromDictDir($outputDirectory, 'UTF-8')->parse('猫AB');
+        $result = Igo::fromStorage(FileStorage::fromDataDir($outputDirectory), 'UTF-8')->parse('猫AB');
 
         $this->assertCount(2, $result);
         $this->assertSame('猫', $result[0]->surface);
