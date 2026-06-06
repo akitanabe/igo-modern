@@ -30,6 +30,8 @@ Dynamic 配列と `WordDataReader` を契約依存へ切り替え）。
 `PagedBinaryReader` を Storage 内部へ移し、Storage がファイル reader を生成して
 Dynamic 配列へ渡すよう構成を変える。
 
+実装プランは[ファイル reader の Storage 移管プラン](dictionary-storage-reader-migration-plan.md)を参照。
+
 ### 段階3 — loader への責務集約
 `FileMappedInputStream` の責務（順次読み込み + 実体化ポリシー選択）を Storage 内部 loader へ移し、
 Binary namespace からファイルシステム・実体化ポリシーの知識を取り除く。
