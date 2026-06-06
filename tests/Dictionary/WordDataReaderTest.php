@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace IgoModern\Tests\Dictionary;
 
 use IgoModern\Dictionary\WordDataReader;
+use IgoModern\Tests\Support\RecordingByteReader;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -62,6 +63,19 @@ class WordDataReaderTest extends TestCase
         $this->expectExceptionMessage('dictionary reading failed.');
 
         $reader->readCodeUnitSlice(2, 1);
+    }
+
+    /**
+     * WordDataReader が具象 reader ではなく ByteReader 契約に依存し、code unit offset を 2 倍した byte 範囲を要求することを確認する。
+     */
+    public function testReadCodeUnitSliceDependsOnByteReaderContract(): void
+    {
+        $reader = new RecordingByteReader($this->packValues('S', [1000, 1001, 2000, 3000]));
+        $wordDataReader = new WordDataReader($reader);
+
+        $this->assertSame($this->packValues('S', [1001, 2000]), $wordDataReader->readCodeUnitSlice(1, 3));
+        // code unit offset は 2 倍の byte offset、code unit 長は 2 倍の byte length になることを検証する。
+        $this->assertSame([[2, 4]], $reader->calls);
     }
 
     /**

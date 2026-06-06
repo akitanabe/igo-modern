@@ -18,9 +18,13 @@
 
 ## 段階
 
-### 段階1 — ByteReader 契約の導入
+### 段階1 — ByteReader 契約の導入 ✅ 実装済み
 辞書層ファクトリ整理後の最初の一歩。`ByteReader` 相当の読み取り契約を導入し、
 Dynamic 配列を具象 `PagedBinaryReader` 依存から契約依存へ切り替える。
+
+実装は[ByteReader 契約導入プラン](dictionary-storage-bytereader-contract-plan.md)に基づき完了
+（`src/Binary/Contract/ByteReader.php` 追加、`PagedBinaryReader` が同契約を実装、
+Dynamic 配列と `WordDataReader` を契約依存へ切り替え）。
 
 ### 段階2 — ファイル reader の Storage 移管
 `PagedBinaryReader` を Storage 内部へ移し、Storage がファイル reader を生成して

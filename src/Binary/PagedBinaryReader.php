@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace IgoModern\Binary;
 
+use IgoModern\Binary\Contract\ByteReader;
 use RuntimeException;
 
 /**
  * バイナリファイルを固定サイズページ単位で読み、直近ページを再利用する。
  */
-class PagedBinaryReader
+class PagedBinaryReader implements ByteReader
 {
     /** dynamic array のランダムアクセスで使う既定ページサイズを保持する。 */
     private const DEFAULT_PAGE_SIZE = 8192;

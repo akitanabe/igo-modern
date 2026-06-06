@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IgoModern\Dictionary;
 
+use IgoModern\Binary\Contract\ByteReader;
 use IgoModern\Binary\PagedBinaryReader;
 use RuntimeException;
 
@@ -16,7 +17,7 @@ class WordDataReader
      * 事前に用意されたページ読み込み reader を保持する。
      */
     public function __construct(
-        private PagedBinaryReader $reader,
+        private ByteReader $reader,
     ) {}
 
     /**

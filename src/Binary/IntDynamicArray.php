@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IgoModern\Binary;
 
+use IgoModern\Binary\Contract\ByteReader;
 use IgoModern\Binary\Contract\IntArray;
 use RuntimeException;
 
@@ -16,7 +17,7 @@ class IntDynamicArray implements IntArray
      * バイナリ辞書内の配列開始位置とページ reader を保持する。
      */
     public function __construct(
-        protected PagedBinaryReader $reader,
+        protected ByteReader $reader,
         protected int $start,
     ) {}
 
