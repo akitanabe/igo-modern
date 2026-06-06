@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IgoModern\Binary;
 
+use IgoModern\Binary\Contract\ByteReaderFactory;
 use IgoModern\Binary\Contract\CharArray;
 use IgoModern\Binary\Contract\CharArrayReader;
 use IgoModern\Binary\Contract\IntArray;
@@ -29,32 +30,44 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
     /** 配列インスタンスの実体化方式（Lazy / Resident）を保持する。 */
     private ArrayMaterialization $materialization;
 
+    /** Lazy 時に dynamic 配列へ注入するファイル reader を生成するファクトリを保持する。 */
+    private ?ByteReaderFactory $byteReaderFactory;
+
     /**
-     * 開かれたファイルハンドルと配列インスタンスの実体化方式を保持する。
+     * 開かれたファイルハンドルと配列インスタンスの実体化方式・reader ファクトリを保持する。
      *
      * 実体化方式の既定は Lazy。PHP 8.0 ではオブジェクト定数を既定値に置けないため null で受け取り正規化する。
+     * factory は sequential helper では不要なため null を許し、Lazy 配列生成時にガードで必須化する。
      *
      * @param resource $file
      */
-    public function __construct($file, string $fileName, ?ArrayMaterialization $materialization = null)
-    {
+    public function __construct(
+        $file,
+        string $fileName,
+        ?ArrayMaterialization $materialization = null,
+        ?ByteReaderFactory $byteReaderFactory = null,
+    ) {
         $this->file = $file;
         $this->fileName = $fileName;
         $this->materialization = $materialization ?? ArrayMaterialization::Lazy();
+        $this->byteReaderFactory = $byteReaderFactory;
     }
 
     /**
      * 読み取り対象ファイルを開き、順次読み込み stream を作る。
      */
-    public static function fromFile(string $fileName, ?ArrayMaterialization $materialization = null): self
-    {
+    public static function fromFile(
+        string $fileName,
+        ?ArrayMaterialization $materialization = null,
+        ?ByteReaderFactory $byteReaderFactory = null,
+    ): self {
         $file = fopen($fileName, 'rb');
 
         if ($file === false) {
             throw new RuntimeException('dictionary reading failed.');
         }
 
-        return new self($file, $fileName, $materialization);
+        return new self($file, $fileName, $materialization, $byteReaderFactory);
     }
 
     /**
@@ -85,7 +98,7 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
     public function getIntArrayInstance(int $count): IntArray
     {
         if ($this->materialization === ArrayMaterialization::Lazy()) {
-            $array = IntDynamicArray::fromFile($this->fileName, $this->cur);
+            $array = new IntDynamicArray($this->requireByteReaderFactory()->open($this->fileName), $this->cur);
             $this->skipBytes($count * 4);
 
             return $array;
@@ -138,7 +151,7 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
     public function getShortArrayInstance(int $count): ShortArray
     {
         if ($this->materialization === ArrayMaterialization::Lazy()) {
-            $array = ShortDynamicArray::fromFile($this->fileName, $this->cur);
+            $array = new ShortDynamicArray($this->requireByteReaderFactory()->open($this->fileName), $this->cur);
             $this->skipBytes($count * 2);
 
             return $array;
@@ -153,7 +166,7 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
     public function getCharArrayInstance(int $count): CharArray
     {
         if ($this->materialization === ArrayMaterialization::Lazy()) {
-            $array = CharDynamicArray::fromFile($this->fileName, $this->cur);
+            $array = new CharDynamicArray($this->requireByteReaderFactory()->open($this->fileName), $this->cur);
             $this->skipBytes($count * 2);
 
             return $array;
@@ -228,6 +241,18 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
         }
 
         return fclose($this->file);
+    }
+
+    /**
+     * Lazy 配列生成に必須の reader ファクトリを返し、未設定なら設定漏れとして失敗させる。
+     */
+    private function requireByteReaderFactory(): ByteReaderFactory
+    {
+        if ($this->byteReaderFactory === null) {
+            throw new RuntimeException('dictionary reading failed.');
+        }
+
+        return $this->byteReaderFactory;
     }
 
     /**

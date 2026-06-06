@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace IgoModern\Tests\Dictionary;
 
 use IgoModern\Dictionary\Binary\BinaryConnectionMatrix;
+use IgoModern\Storage\PagedByteReaderFactory;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -38,7 +39,14 @@ class MatrixTest extends TestCase
      */
     public function testLinkCostReadsCostByLeftAndRightIds(): void
     {
-        $matrix = BinaryConnectionMatrix::fromDataDir($this->createDictionaryDirectory(3, 2, [10, 20, 30, -5, -6, -7]));
+        $matrix = BinaryConnectionMatrix::fromDataDir($this->createDictionaryDirectory(3, 2, [
+            10,
+            20,
+            30,
+            -5,
+            -6,
+            -7,
+        ]), null, new PagedByteReaderFactory());
 
         $this->assertSame(10, $matrix->linkCost(0, 0));
         $this->assertSame(30, $matrix->linkCost(2, 0));
@@ -51,7 +59,15 @@ class MatrixTest extends TestCase
      */
     public function testLinkCostUsesHeaderSizesAsMatrixDimensions(): void
     {
-        $matrix = BinaryConnectionMatrix::fromDataDir($this->createDictionaryDirectory(2, 3, [1, 2, 3, 4, 5, 6, 999]));
+        $matrix = BinaryConnectionMatrix::fromDataDir($this->createDictionaryDirectory(2, 3, [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            999,
+        ]), null, new PagedByteReaderFactory());
 
         $this->assertSame(1, $matrix->linkCost(0, 0));
         $this->assertSame(4, $matrix->linkCost(1, 1));

@@ -6,6 +6,8 @@ namespace IgoModern\Tests\Dictionary;
 
 use IgoModern\Dictionary\Category;
 use IgoModern\Dictionary\CharCategory;
+use IgoModern\Storage\PagedByteReaderFactory;
+use IgoModern\Tests\Support\RecordingByteReaderFactory;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -41,15 +43,19 @@ class CharCategoryTest extends TestCase
      */
     public function testCategoryReturnsCategoryAssignedToCharacterCode(): void
     {
-        $category = CharCategory::fromDataDir($this->createDictionaryDirectory(
-            [
-                ['id' => 0, 'length' => 1, 'invoke' => false, 'group' => false],
-                ['id' => 7, 'length' => 3, 'invoke' => true, 'group' => false],
-                ['id' => 9, 'length' => 5, 'invoke' => false, 'group' => true],
-            ],
-            [65 => 1, 66 => 2],
-            [65 => 0b0011, 66 => 0b0100],
-        ));
+        $category = CharCategory::fromDataDir(
+            $this->createDictionaryDirectory(
+                [
+                    ['id' => 0, 'length' => 1, 'invoke' => false, 'group' => false],
+                    ['id' => 7, 'length' => 3, 'invoke' => true, 'group' => false],
+                    ['id' => 9, 'length' => 5, 'invoke' => false, 'group' => true],
+                ],
+                [65 => 1, 66 => 2],
+                [65 => 0b0011, 66 => 0b0100],
+            ),
+            null,
+            new PagedByteReaderFactory(),
+        );
 
         $latinA = $category->category(65);
         $latinB = $category->category(66);
@@ -70,17 +76,40 @@ class CharCategoryTest extends TestCase
      */
     public function testIsCompatibleUsesSharedMaskBits(): void
     {
-        $category = CharCategory::fromDataDir($this->createDictionaryDirectory(
-            [
-                ['id' => 0, 'length' => 1, 'invoke' => false, 'group' => false],
-                ['id' => 1, 'length' => 2, 'invoke' => true, 'group' => true],
-            ],
-            [65 => 1, 66 => 1, 67 => 1],
-            [65 => 0b0011, 66 => 0b0010, 67 => 0b0100],
-        ));
+        $category = CharCategory::fromDataDir(
+            $this->createDictionaryDirectory(
+                [
+                    ['id' => 0, 'length' => 1, 'invoke' => false, 'group' => false],
+                    ['id' => 1, 'length' => 2, 'invoke' => true, 'group' => true],
+                ],
+                [65 => 1, 66 => 1, 67 => 1],
+                [65 => 0b0011, 66 => 0b0010, 67 => 0b0100],
+            ),
+            null,
+            new PagedByteReaderFactory(),
+        );
 
         $this->assertTrue($category->isCompatible(65, 66));
         $this->assertFalse($category->isCompatible(65, 67));
+    }
+
+    /**
+     * 注入された factory が code2category に対し open され、Lazy 配列生成へ漏れなく伝播することを確認する。
+     */
+    public function testFactoryIsPropagatedToCode2CategoryFile(): void
+    {
+        $directory = $this->createDictionaryDirectory(
+            [['id' => 0, 'length' => 1, 'invoke' => false, 'group' => false]],
+            [65 => 0],
+            [65 => 0b0001],
+        );
+        $factory = new RecordingByteReaderFactory();
+
+        CharCategory::fromDataDir($directory, null, $factory);
+
+        $openedBaseNames = array_values(array_unique(array_map('basename', $factory->openedFiles)));
+
+        $this->assertSame(['code2category'], $openedBaseNames);
     }
 
     /**

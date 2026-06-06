@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace IgoModern\Dictionary\Build;
 
 use IgoModern\Dictionary\Trie\Searcher;
+use IgoModern\Storage\PagedByteReaderFactory;
 use RuntimeException;
 
 /**
@@ -20,7 +21,12 @@ class Word2IdCategoryIdResolver implements CategoryIdResolver
         $key = $this->utf16CodeUnits("\002" . $categoryName);
         $callback = new ExactCategoryKeyCallback(count($key));
 
-        Searcher::fromFile($outputDirectory . '/word2id')->eachCommonPrefix($key, 0, $callback);
+        // build 経路でも Lazy 読み込みを維持するため、ファイル reader を生成する具象 factory を渡す。
+        Searcher::fromFile($outputDirectory . '/word2id', null, new PagedByteReaderFactory())->eachCommonPrefix(
+            $key,
+            0,
+            $callback,
+        );
 
         $id = $callback->id();
 

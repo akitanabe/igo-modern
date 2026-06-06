@@ -12,6 +12,7 @@ use IgoModern\Binary\IntDynamicArray;
 use IgoModern\Binary\IntMemoryArray;
 use IgoModern\Binary\ShortDynamicArray;
 use IgoModern\Binary\ShortMemoryArray;
+use IgoModern\Tests\Support\RecordingByteReaderFactory;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -101,14 +102,15 @@ class FileMappedInputStreamTest extends TestCase
     }
 
     /**
-     * Lazy 実体化時は配列インスタンスが開始オフセットを使って必要な値だけ読むことを確認する。
+     * Lazy 実体化時は配列インスタンスが注入された factory の reader を使い、開始オフセットから必要な値だけ読むことを確認する。
      */
     public function testArrayInstancesReadDynamicallyWhenLazy(): void
     {
         $fileName = $this->createBinaryFile(
             $this->packValues('l', [10, -20]) . $this->packValues('s', [30, -40]) . $this->packValues('S', [50, 60]),
         );
-        $stream = FileMappedInputStream::fromFile($fileName, ArrayMaterialization::Lazy());
+        $factory = new RecordingByteReaderFactory();
+        $stream = FileMappedInputStream::fromFile($fileName, ArrayMaterialization::Lazy(), $factory);
 
         $ints = $stream->getIntArrayInstance(2);
         $shorts = $stream->getShortArrayInstance(2);
@@ -121,6 +123,28 @@ class FileMappedInputStreamTest extends TestCase
         $this->assertInstanceOf(CharDynamicArray::class, $chars);
         $this->assertSame(60, $chars->get(1));
         $this->assertTrue($stream->close());
+        // Lazy では各 instance 生成ごとに factory->open($fileName) が呼ばれ、reader が注入されることを検証する。
+        $this->assertSame([$fileName, $fileName, $fileName], $factory->openedFiles);
+    }
+
+    /**
+     * Lazy 実体化なのに factory 未注入で配列を生成しようとすると設定漏れとして失敗することを確認する。
+     */
+    public function testArrayInstanceCreationFailsWhenFactoryMissingOnLazy(): void
+    {
+        $stream = FileMappedInputStream::fromFile(
+            $this->createBinaryFile($this->packValues('l', [10, -20])),
+            ArrayMaterialization::Lazy(),
+        );
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('dictionary reading failed.');
+
+        try {
+            $stream->getIntArrayInstance(2);
+        } finally {
+            $stream->close();
+        }
     }
 
     /**

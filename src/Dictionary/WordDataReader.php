@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace IgoModern\Dictionary;
 
 use IgoModern\Binary\Contract\ByteReader;
-use IgoModern\Binary\PagedBinaryReader;
 use RuntimeException;
 
 /**
@@ -19,14 +18,6 @@ class WordDataReader
     public function __construct(
         private ByteReader $reader,
     ) {}
-
-    /**
-     * 素性データの読み取り対象ファイルを開く。
-     */
-    public static function fromFile(string $fileName): self
-    {
-        return new self(PagedBinaryReader::fromFile($fileName));
-    }
 
     /**
      * UTF-16 code unit の開始・終了オフセットに対応する素性バイト列を返す。

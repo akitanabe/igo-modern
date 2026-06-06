@@ -10,6 +10,8 @@ use IgoModern\Binary\IntDynamicArray;
 use IgoModern\Binary\IntMemoryArray;
 use IgoModern\Dictionary\Binary\BinaryWordDictionary;
 use IgoModern\Dictionary\WordDicCallback;
+use IgoModern\Storage\PagedByteReaderFactory;
+use IgoModern\Tests\Support\RecordingByteReaderFactory;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
 
@@ -46,7 +48,11 @@ class WordDicTest extends TestCase
      */
     public function testSearchExpandsTrieMatchesIntoWordNodes(): void
     {
-        $wordDic = BinaryWordDictionary::fromDataDir($this->createDictionaryDirectory());
+        $wordDic = BinaryWordDictionary::fromDataDir(
+            $this->createDictionaryDirectory(),
+            null,
+            new PagedByteReaderFactory(),
+        );
         $callback = new CapturingWordDicCallback();
 
         $wordDic->search([10, 20, 30, 99], 0, $callback);
@@ -66,7 +72,11 @@ class WordDicTest extends TestCase
      */
     public function testCallWordRangeUsesGivenRangeAndSpaceFlag(): void
     {
-        $wordDic = BinaryWordDictionary::fromDataDir($this->createDictionaryDirectory());
+        $wordDic = BinaryWordDictionary::fromDataDir(
+            $this->createDictionaryDirectory(),
+            null,
+            new PagedByteReaderFactory(),
+        );
         $callback = new CapturingWordDicCallback();
 
         $wordDic->callWordRange(0, 5, 4, true, $callback);
@@ -85,7 +95,11 @@ class WordDicTest extends TestCase
      */
     public function testWordDataReturnsFeatureBytesByWordOffsets(): void
     {
-        $wordDic = BinaryWordDictionary::fromDataDir($this->createDictionaryDirectory());
+        $wordDic = BinaryWordDictionary::fromDataDir(
+            $this->createDictionaryDirectory(),
+            null,
+            new PagedByteReaderFactory(),
+        );
 
         $this->assertSame($this->packValues('S', [1000, 1001]), $wordDic->wordData(0));
         $this->assertSame($this->packValues('S', [2000]), $wordDic->wordData(1));
@@ -101,14 +115,36 @@ class WordDicTest extends TestCase
         $indicesProperty = new ReflectionProperty(BinaryWordDictionary::class, 'indices');
         $indicesProperty->setAccessible(true);
 
-        $dynamic = BinaryWordDictionary::fromDataDir($this->createDictionaryDirectory());
+        $dynamic = BinaryWordDictionary::fromDataDir(
+            $this->createDictionaryDirectory(),
+            null,
+            new PagedByteReaderFactory(),
+        );
         $resident = BinaryWordDictionary::fromDataDir(
             $this->createDictionaryDirectory(),
             ArrayMaterialization::Resident(),
+            new PagedByteReaderFactory(),
         );
 
         $this->assertInstanceOf(IntDynamicArray::class, $indicesProperty->getValue($dynamic));
         $this->assertInstanceOf(IntMemoryArray::class, $indicesProperty->getValue($resident));
+    }
+
+    /**
+     * 注入された factory が word2id / word.dat / word.ary.idx / word.inf 全てに対し open され、
+     * Searcher / WordDataReader / readIndices / 本体ストリームへ漏れなく伝播することを確認する。
+     */
+    public function testFactoryIsPropagatedToEveryWordDictionaryFile(): void
+    {
+        $directory = $this->createDictionaryDirectory();
+        $factory = new RecordingByteReaderFactory();
+
+        BinaryWordDictionary::fromDataDir($directory, null, $factory);
+
+        $openedBaseNames = array_values(array_unique(array_map('basename', $factory->openedFiles)));
+        sort($openedBaseNames);
+
+        $this->assertSame(['word.ary.idx', 'word.dat', 'word.inf', 'word2id'], $openedBaseNames);
     }
 
     /**

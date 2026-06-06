@@ -59,12 +59,14 @@ abstract class BinaryStorage implements DictionaryStorage
      */
     final protected static function loadTrio(string $dir, ArrayMaterialization $materialization): static
     {
-        $word = BinaryWordDictionary::fromDataDir($dir, $materialization);
+        // ファイル reader の生成点は storage に閉じ、各辞書へ materialization と並走で注入する。
+        $byteReaderFactory = new PagedByteReaderFactory();
+        $word = BinaryWordDictionary::fromDataDir($dir, $materialization, $byteReaderFactory);
 
         return new static(
             $word,
-            BinaryUnknownWordDictionary::fromDataDir($dir, $word, $materialization),
-            BinaryConnectionMatrix::fromDataDir($dir, $materialization),
+            BinaryUnknownWordDictionary::fromDataDir($dir, $word, $materialization, $byteReaderFactory),
+            BinaryConnectionMatrix::fromDataDir($dir, $materialization, $byteReaderFactory),
         );
     }
 }

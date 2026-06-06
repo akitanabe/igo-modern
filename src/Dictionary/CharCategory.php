@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace IgoModern\Dictionary;
 
 use IgoModern\Binary\ArrayMaterialization;
+use IgoModern\Binary\Contract\ByteReaderFactory;
 use IgoModern\Binary\Contract\IntArray;
 use IgoModern\Binary\FileMappedInputStream;
 
@@ -28,10 +29,14 @@ class CharCategory
      * 辞書ディレクトリからカテゴリ定義と文字コード別のカテゴリ・互換性表を読み込む。
      *
      * 公開構築点は Storage 実装のみ。$materialization は配列の実体化方式（Lazy / Resident）を選ぶ内部限定の引数。
+     * $byteReaderFactory は Lazy 配列が使うファイル reader の生成元で、materialization と並走で渡す内部限定の引数。
      */
-    public static function fromDataDir(string $dataDir, ?ArrayMaterialization $materialization = null): self
-    {
-        $stream = FileMappedInputStream::fromFile($dataDir . '/code2category', $materialization);
+    public static function fromDataDir(
+        string $dataDir,
+        ?ArrayMaterialization $materialization = null,
+        ?ByteReaderFactory $byteReaderFactory = null,
+    ): self {
+        $stream = FileMappedInputStream::fromFile($dataDir . '/code2category', $materialization, $byteReaderFactory);
 
         try {
             $count = intdiv($stream->size(), 4 * 2);

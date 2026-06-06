@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace IgoModern\Dictionary\Binary;
 
 use IgoModern\Binary\ArrayMaterialization;
+use IgoModern\Binary\Contract\ByteReaderFactory;
 use IgoModern\Dictionary\CharCategory;
 use IgoModern\Dictionary\Contract\UnknownWordDictionary;
 use IgoModern\Dictionary\WordDicCallback;
@@ -33,13 +34,15 @@ class BinaryUnknownWordDictionary implements UnknownWordDictionary
      * 辞書ディレクトリから未知語カテゴリ辞書を読み込み、姉妹の単語辞書とともに保持する。
      *
      * 公開構築点は Storage 実装のみ。$materialization は配列の実体化方式（Lazy / Resident）を選ぶ内部限定の引数。
+     * $byteReaderFactory は Lazy 配列が使うファイル reader の生成元で、materialization と並走で渡す内部限定の引数。
      */
     public static function fromDataDir(
         string $dataDir,
         BinaryWordDictionary $wordDic,
         ?ArrayMaterialization $materialization = null,
+        ?ByteReaderFactory $byteReaderFactory = null,
     ): self {
-        return new self(CharCategory::fromDataDir($dataDir, $materialization), $wordDic);
+        return new self(CharCategory::fromDataDir($dataDir, $materialization, $byteReaderFactory), $wordDic);
     }
 
     /**

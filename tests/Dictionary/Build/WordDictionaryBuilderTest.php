@@ -9,6 +9,7 @@ use IgoModern\Dictionary\Binary\BinaryWordDictionary;
 use IgoModern\Dictionary\Build\Word2IdCategoryIdResolver;
 use IgoModern\Dictionary\Build\WordDictionaryBuilder;
 use IgoModern\Dictionary\WordDicCallback;
+use IgoModern\Storage\PagedByteReaderFactory;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -67,7 +68,7 @@ class WordDictionaryBuilderTest extends TestCase
 
         (new WordDictionaryBuilder())->build($outputDirectory, $inputDirectory, 'UTF-8', ',');
 
-        $wordDic = BinaryWordDictionary::fromDataDir($outputDirectory);
+        $wordDic = BinaryWordDictionary::fromDataDir($outputDirectory, null, new PagedByteReaderFactory());
         $normalCallback = new CapturingBuiltWordCallback();
         $wordDic->search($this->utf16CodeUnits('猫語です'), 0, $normalCallback);
 

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace IgoModern\Tests\Binary;
+namespace IgoModern\Tests\Storage;
 
-use IgoModern\Binary\PagedBinaryReader;
+use IgoModern\Storage\PagedBinaryReader;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -35,7 +35,7 @@ class PagedBinaryReaderTest extends TestCase
      */
     public function testReadBytesReturnsSliceWithinPage(): void
     {
-        $reader = PagedBinaryReader::fromFile($this->createBinaryFile('abcdefghij'), 4);
+        $reader = $this->createReader('abcdefghij', 4);
 
         $this->assertSame('cde', $reader->readBytes(2, 3));
     }
@@ -45,7 +45,7 @@ class PagedBinaryReaderTest extends TestCase
      */
     public function testReadBytesReturnsSliceAcrossPageBoundary(): void
     {
-        $reader = PagedBinaryReader::fromFile($this->createBinaryFile('abcdefghij'), 4);
+        $reader = $this->createReader('abcdefghij', 4);
 
         $this->assertSame('defgh', $reader->readBytes(3, 5));
     }
@@ -55,7 +55,7 @@ class PagedBinaryReaderTest extends TestCase
      */
     public function testReadBytesReturnsEmptyStringForEmptyRange(): void
     {
-        $reader = PagedBinaryReader::fromFile($this->createBinaryFile('abc'), 4);
+        $reader = $this->createReader('abc', 4);
 
         $this->assertSame('', $reader->readBytes(1, 0));
     }
@@ -65,12 +65,37 @@ class PagedBinaryReaderTest extends TestCase
      */
     public function testReadBytesRejectsNegativeOffset(): void
     {
-        $reader = PagedBinaryReader::fromFile($this->createBinaryFile('abc'), 4);
+        $reader = $this->createReader('abc', 4);
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('dictionary reading failed.');
 
         $reader->readBytes(-1, 1);
+    }
+
+    /**
+     * 不正なページサイズを辞書読み込み失敗として扱うことを確認する。
+     */
+    public function testConstructorRejectsNonPositivePageSize(): void
+    {
+        $file = fopen($this->createBinaryFile('abc'), 'rb');
+        $this->assertIsResource($file);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('dictionary reading failed.');
+
+        new PagedBinaryReader($file, 0);
+    }
+
+    /**
+     * 指定ページサイズで一時バイナリファイルを開く reader を直接構築する。
+     */
+    private function createReader(string $contents, int $pageSize): PagedBinaryReader
+    {
+        $file = fopen($this->createBinaryFile($contents), 'rb');
+        $this->assertIsResource($file);
+
+        return new PagedBinaryReader($file, $pageSize);
     }
 
     /**

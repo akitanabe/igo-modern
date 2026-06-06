@@ -7,6 +7,7 @@ namespace IgoModern\Tests\Dictionary\Build;
 use IgoModern\Dictionary\Build\DoubleArrayTrieBuilder;
 use IgoModern\Dictionary\Trie\CommonPrefixCallback;
 use IgoModern\Dictionary\Trie\Searcher;
+use IgoModern\Storage\PagedByteReaderFactory;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -45,7 +46,7 @@ class DoubleArrayTrieBuilderTest extends TestCase
             '猫' => 3,
         ], $fileName);
 
-        $searcher = Searcher::fromFile($fileName);
+        $searcher = Searcher::fromFile($fileName, null, new PagedByteReaderFactory());
         $latin = new CapturingPrefixCallback();
         $category = new CapturingPrefixCallback();
         $japanese = new CapturingPrefixCallback();
@@ -77,7 +78,7 @@ class DoubleArrayTrieBuilderTest extends TestCase
             '東京' => 1,
         ], $fileName);
 
-        $searcher = Searcher::fromFile($fileName);
+        $searcher = Searcher::fromFile($fileName, null, new PagedByteReaderFactory());
         $category = new CapturingPrefixCallback();
         $place = new CapturingPrefixCallback();
 

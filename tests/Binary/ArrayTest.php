@@ -13,6 +13,7 @@ use IgoModern\Binary\IntDynamicArray;
 use IgoModern\Binary\IntMemoryArray;
 use IgoModern\Binary\ShortDynamicArray;
 use IgoModern\Binary\ShortMemoryArray;
+use IgoModern\Storage\PagedByteReaderFactory;
 use IgoModern\Tests\Support\RecordingByteReader;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
@@ -70,7 +71,7 @@ class ArrayTest extends TestCase
     public function testIntDynamicArrayReturnsValuesLoadedFromFileOffset(): void
     {
         $fileName = $this->createBinaryFile('xx' . $this->packValues('l', [10, -20, 30]));
-        $array = IntDynamicArray::fromFile($fileName, 2);
+        $array = new IntDynamicArray((new PagedByteReaderFactory())->open($fileName), 2);
 
         $this->assertSame(10, $array->get(0));
         $this->assertSame(-20, $array->get(1));
@@ -95,7 +96,7 @@ class ArrayTest extends TestCase
     public function testShortDynamicArrayReturnsValuesLoadedFromFileOffset(): void
     {
         $fileName = $this->createBinaryFile('x' . $this->packValues('s', [100, -200, 300]));
-        $array = ShortDynamicArray::fromFile($fileName, 1);
+        $array = new ShortDynamicArray((new PagedByteReaderFactory())->open($fileName), 1);
 
         $this->assertSame(100, $array->get(0));
         $this->assertSame(-200, $array->get(1));
@@ -120,7 +121,7 @@ class ArrayTest extends TestCase
     public function testCharDynamicArrayReturnsValuesLoadedFromFileOffset(): void
     {
         $fileName = $this->createBinaryFile('x' . $this->packValues('S', [65, 40_000, 65_535]));
-        $array = CharDynamicArray::fromFile($fileName, 1);
+        $array = new CharDynamicArray((new PagedByteReaderFactory())->open($fileName), 1);
 
         $this->assertSame(65, $array->get(0));
         $this->assertSame(40_000, $array->get(1));
