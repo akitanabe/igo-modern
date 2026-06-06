@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace IgoModern\Tests\Analysis;
 
 use IgoModern\Analysis\Tagger;
-use IgoModern\Dictionary\Storage\FileStorage;
 use IgoModern\Morpheme;
+use IgoModern\Storage\FileStorage;
 use PHPUnit\Framework\TestCase;
 
 /**

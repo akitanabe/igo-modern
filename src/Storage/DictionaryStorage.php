@@ -2,7 +2,11 @@
 
 declare(strict_types=1);
 
-namespace IgoModern\Dictionary\Contract;
+namespace IgoModern\Storage;
+
+use IgoModern\Dictionary\Contract\ConnectionMatrix;
+use IgoModern\Dictionary\Contract\UnknownWordDictionary;
+use IgoModern\Dictionary\Contract\WordDictionary;
 
 /**
  * 解析に必要な 3 種類の辞書をまとめて提供する、辞書ストレージのファサード境界。

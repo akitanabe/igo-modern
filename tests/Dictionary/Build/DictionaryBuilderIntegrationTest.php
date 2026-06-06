@@ -9,11 +9,11 @@ use IgoModern\Dictionary\Binary\BinaryConnectionMatrix;
 use IgoModern\Dictionary\Binary\BinaryWordDictionary;
 use IgoModern\Dictionary\Build\DictionaryBuilder;
 use IgoModern\Dictionary\CharCategory;
-use IgoModern\Dictionary\Storage\FileStorage;
 use IgoModern\Dictionary\Trie\CommonPrefixCallback;
 use IgoModern\Dictionary\Trie\Searcher;
 use IgoModern\Dictionary\WordDicCallback;
 use IgoModern\Igo;
+use IgoModern\Storage\FileStorage;
 use PHPUnit\Framework\TestCase;
 
 /**

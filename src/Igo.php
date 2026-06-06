@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace IgoModern;
 
 use IgoModern\Analysis\Tagger;
-use IgoModern\Dictionary\Contract\DictionaryStorage;
+use IgoModern\Storage\DictionaryStorage;
 use Throwable;
 
 /**

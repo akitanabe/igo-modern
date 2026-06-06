@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace IgoModern\Benchmark;
 
-use IgoModern\Dictionary\Storage\FileStorage;
 use IgoModern\Igo;
 use IgoModern\Morpheme;
 use IgoModern\Parser;
+use IgoModern\Storage\FileStorage;
 use InvalidArgumentException;
 
 /**

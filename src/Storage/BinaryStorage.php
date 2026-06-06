@@ -2,14 +2,13 @@
 
 declare(strict_types=1);
 
-namespace IgoModern\Dictionary\Storage;
+namespace IgoModern\Storage;
 
 use IgoModern\Binary\ArrayMaterialization;
 use IgoModern\Dictionary\Binary\BinaryConnectionMatrix;
 use IgoModern\Dictionary\Binary\BinaryUnknownWordDictionary;
 use IgoModern\Dictionary\Binary\BinaryWordDictionary;
 use IgoModern\Dictionary\Contract\ConnectionMatrix;
-use IgoModern\Dictionary\Contract\DictionaryStorage;
 use IgoModern\Dictionary\Contract\UnknownWordDictionary;
 use IgoModern\Dictionary\Contract\WordDictionary;
 

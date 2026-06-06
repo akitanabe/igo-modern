@@ -7,11 +7,11 @@ namespace IgoModern\Tests\Analysis;
 use IgoModern\Analysis\Tagger;
 use IgoModern\Analysis\ViterbiNode;
 use IgoModern\Dictionary\Contract\ConnectionMatrix;
-use IgoModern\Dictionary\Contract\DictionaryStorage;
 use IgoModern\Dictionary\Contract\UnknownWordDictionary;
 use IgoModern\Dictionary\Contract\WordDictionary;
 use IgoModern\Dictionary\WordDicCallback;
 use IgoModern\Morpheme;
+use IgoModern\Storage\DictionaryStorage;
 use PHPUnit\Framework\TestCase;
 
 /**

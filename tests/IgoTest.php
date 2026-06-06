@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace IgoModern\Tests;
 
 use IgoModern\Analysis\Tagger;
-use IgoModern\Dictionary\Storage\FileStorage;
-use IgoModern\Dictionary\Storage\MemoryStorage;
 use IgoModern\Igo;
 use IgoModern\Morpheme;
+use IgoModern\Storage\FileStorage;
+use IgoModern\Storage\MemoryStorage;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 

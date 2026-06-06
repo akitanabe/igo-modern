@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace IgoModern\Dictionary\Storage;
+namespace IgoModern\Storage;
 
 use IgoModern\Binary\ArrayMaterialization;
 

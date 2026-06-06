@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace IgoModern\Analysis;
 
 use IgoModern\Dictionary\Contract\ConnectionMatrix;
-use IgoModern\Dictionary\Contract\DictionaryStorage;
 use IgoModern\Dictionary\Contract\UnknownWordDictionary;
 use IgoModern\Dictionary\Contract\WordDictionary;
 use IgoModern\Morpheme;
+use IgoModern\Storage\DictionaryStorage;
 use RuntimeException;
 
 /**
