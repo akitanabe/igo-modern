@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace IgoModern\Dictionary\Storage;
 
+use IgoModern\Binary\ArrayMaterialization;
+
 /**
  * 辞書配列を常駐（MemoryArray）で実体化し、ファイルアクセスを避ける storage。
  */
@@ -14,6 +16,6 @@ final class MemoryStorage extends BinaryStorage
      */
     public static function fromDataDir(string $dir): self
     {
-        return self::loadTrio($dir, false);
+        return self::loadTrio($dir, ArrayMaterialization::Resident());
     }
 }

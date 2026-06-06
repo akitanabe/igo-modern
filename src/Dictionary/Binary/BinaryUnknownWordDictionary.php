@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IgoModern\Dictionary\Binary;
 
+use IgoModern\Binary\ArrayMaterialization;
 use IgoModern\Dictionary\CharCategory;
 use IgoModern\Dictionary\Contract\UnknownWordDictionary;
 use IgoModern\Dictionary\WordDicCallback;
@@ -31,11 +32,14 @@ class BinaryUnknownWordDictionary implements UnknownWordDictionary
     /**
      * 辞書ディレクトリから未知語カテゴリ辞書を読み込み、姉妹の単語辞書とともに保持する。
      *
-     * $reduce は配列の実体化方式（true=遅延読み / false=常駐）を選ぶ内部限定の引数。
+     * 公開構築点は Storage 実装のみ。$materialization は配列の実体化方式（Lazy / Resident）を選ぶ内部限定の引数。
      */
-    public static function fromDataDir(string $dataDir, BinaryWordDictionary $wordDic, bool $reduce = true): self
-    {
-        return new self(CharCategory::fromDataDir($dataDir, $reduce), $wordDic);
+    public static function fromDataDir(
+        string $dataDir,
+        BinaryWordDictionary $wordDic,
+        ?ArrayMaterialization $materialization = null,
+    ): self {
+        return new self(CharCategory::fromDataDir($dataDir, $materialization), $wordDic);
     }
 
     /**

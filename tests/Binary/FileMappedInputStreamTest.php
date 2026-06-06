@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IgoModern\Tests\Binary;
 
+use IgoModern\Binary\ArrayMaterialization;
 use IgoModern\Binary\CharDynamicArray;
 use IgoModern\Binary\CharMemoryArray;
 use IgoModern\Binary\FileMappedInputStream;
@@ -74,16 +75,16 @@ class FileMappedInputStreamTest extends TestCase
     }
 
     /**
-     * reduce 無効時は配列インスタンスがストリームから値を読み込んで保持することを確認する。
+     * Resident 実体化時は配列インスタンスがストリームから値を読み込んで保持することを確認する。
      */
-    public function testArrayInstancesReadIntoMemoryWhenReduceIsDisabled(): void
+    public function testArrayInstancesReadIntoMemoryWhenResident(): void
     {
         $stream = FileMappedInputStream::fromFile(
             $this->createBinaryFile(
                 $this->packValues('l', [10, -20]) . $this->packValues('s', [30, -40])
                     . $this->packValues('S', [50, 60]),
             ),
-            false,
+            ArrayMaterialization::Resident(),
         );
 
         $ints = $stream->getIntArrayInstance(2);
@@ -100,14 +101,14 @@ class FileMappedInputStreamTest extends TestCase
     }
 
     /**
-     * reduce 有効時は配列インスタンスが開始オフセットを使って必要な値だけ読むことを確認する。
+     * Lazy 実体化時は配列インスタンスが開始オフセットを使って必要な値だけ読むことを確認する。
      */
-    public function testArrayInstancesReadDynamicallyWhenReduceIsEnabled(): void
+    public function testArrayInstancesReadDynamicallyWhenLazy(): void
     {
         $fileName = $this->createBinaryFile(
             $this->packValues('l', [10, -20]) . $this->packValues('s', [30, -40]) . $this->packValues('S', [50, 60]),
         );
-        $stream = FileMappedInputStream::fromFile($fileName, true);
+        $stream = FileMappedInputStream::fromFile($fileName, ArrayMaterialization::Lazy());
 
         $ints = $stream->getIntArrayInstance(2);
         $shorts = $stream->getShortArrayInstance(2);

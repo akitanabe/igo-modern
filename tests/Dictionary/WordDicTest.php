@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace IgoModern\Tests\Dictionary;
 
 use IgoModern\Analysis\ViterbiNode;
+use IgoModern\Binary\ArrayMaterialization;
 use IgoModern\Binary\IntDynamicArray;
 use IgoModern\Binary\IntMemoryArray;
 use IgoModern\Dictionary\Binary\BinaryWordDictionary;
@@ -92,16 +93,19 @@ class WordDicTest extends TestCase
     }
 
     /**
-     * indices の実体化が reduce で切り替わり、遅延読み（FileStorage 相当）は IntDynamicArray、
-     * 常駐（MemoryStorage 相当）は IntMemoryArray になることを確認する。
+     * indices の実体化が ArrayMaterialization で切り替わり、Lazy（FileStorage 相当）は IntDynamicArray、
+     * Resident（MemoryStorage 相当）は IntMemoryArray になることを確認する。
      */
-    public function testWordRangeIndicesMaterializeAccordingToReduceMode(): void
+    public function testWordRangeIndicesMaterializeAccordingToMaterializationMode(): void
     {
         $indicesProperty = new ReflectionProperty(BinaryWordDictionary::class, 'indices');
         $indicesProperty->setAccessible(true);
 
         $dynamic = BinaryWordDictionary::fromDataDir($this->createDictionaryDirectory());
-        $resident = BinaryWordDictionary::fromDataDir($this->createDictionaryDirectory(), false);
+        $resident = BinaryWordDictionary::fromDataDir(
+            $this->createDictionaryDirectory(),
+            ArrayMaterialization::Resident(),
+        );
 
         $this->assertInstanceOf(IntDynamicArray::class, $indicesProperty->getValue($dynamic));
         $this->assertInstanceOf(IntMemoryArray::class, $indicesProperty->getValue($resident));

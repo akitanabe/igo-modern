@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace IgoModern\Dictionary\Storage;
 
+use IgoModern\Binary\ArrayMaterialization;
+
 /**
  * 辞書配列を遅延読み（DynamicArray）で実体化する、ファイル常駐を避ける storage。
  */
@@ -14,6 +16,6 @@ final class FileStorage extends BinaryStorage
      */
     public static function fromDataDir(string $dir): self
     {
-        return self::loadTrio($dir, true);
+        return self::loadTrio($dir, ArrayMaterialization::Lazy());
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IgoModern\Dictionary;
 
+use IgoModern\Binary\ArrayMaterialization;
 use IgoModern\Binary\Contract\IntArray;
 use IgoModern\Binary\FileMappedInputStream;
 
@@ -26,11 +27,11 @@ class CharCategory
     /**
      * 辞書ディレクトリからカテゴリ定義と文字コード別のカテゴリ・互換性表を読み込む。
      *
-     * $reduce は配列の実体化方式（true=遅延読み / false=常駐）を選ぶ内部限定の引数。
+     * 公開構築点は Storage 実装のみ。$materialization は配列の実体化方式（Lazy / Resident）を選ぶ内部限定の引数。
      */
-    public static function fromDataDir(string $dataDir, bool $reduce = true): self
+    public static function fromDataDir(string $dataDir, ?ArrayMaterialization $materialization = null): self
     {
-        $stream = FileMappedInputStream::fromFile($dataDir . '/code2category', $reduce);
+        $stream = FileMappedInputStream::fromFile($dataDir . '/code2category', $materialization);
 
         try {
             $count = intdiv($stream->size(), 4 * 2);

@@ -26,24 +26,27 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
     /** 配列インスタンスに渡す開始位置を追跡するため、数値読み取りのカーソルを保持する。 */
     private int $cur = 0;
 
+    /** 配列インスタンスの実体化方式（Lazy / Resident）を保持する。 */
+    private ArrayMaterialization $materialization;
+
     /**
-     * 開かれたファイルハンドルと配列インスタンスの読み取り方式を保持する。
+     * 開かれたファイルハンドルと配列インスタンスの実体化方式を保持する。
+     *
+     * 実体化方式の既定は Lazy。PHP 8.0 ではオブジェクト定数を既定値に置けないため null で受け取り正規化する。
      *
      * @param resource $file
      */
-    public function __construct(
-        $file,
-        string $fileName,
-        private bool $reduce = true,
-    ) {
+    public function __construct($file, string $fileName, ?ArrayMaterialization $materialization = null)
+    {
         $this->file = $file;
         $this->fileName = $fileName;
+        $this->materialization = $materialization ?? ArrayMaterialization::Lazy();
     }
 
     /**
      * 読み取り対象ファイルを開き、順次読み込み stream を作る。
      */
-    public static function fromFile(string $fileName, bool $reduce = true): self
+    public static function fromFile(string $fileName, ?ArrayMaterialization $materialization = null): self
     {
         $file = fopen($fileName, 'rb');
 
@@ -51,7 +54,7 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
             throw new RuntimeException('dictionary reading failed.');
         }
 
-        return new self($file, $fileName, $reduce);
+        return new self($file, $fileName, $materialization);
     }
 
     /**
@@ -77,11 +80,11 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
     }
 
     /**
-     * 設定された読み取り方式に応じて int 配列の実装を作る。
+     * 設定された実体化方式に応じて int 配列の実装を作る。
      */
     public function getIntArrayInstance(int $count): IntArray
     {
-        if ($this->reduce) {
+        if ($this->materialization === ArrayMaterialization::Lazy()) {
             $array = IntDynamicArray::fromFile($this->fileName, $this->cur);
             $this->skipBytes($count * 4);
 
@@ -130,11 +133,11 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
     }
 
     /**
-     * 設定された読み取り方式に応じて signed short 配列の実装を作る。
+     * 設定された実体化方式に応じて signed short 配列の実装を作る。
      */
     public function getShortArrayInstance(int $count): ShortArray
     {
-        if ($this->reduce) {
+        if ($this->materialization === ArrayMaterialization::Lazy()) {
             $array = ShortDynamicArray::fromFile($this->fileName, $this->cur);
             $this->skipBytes($count * 2);
 
@@ -145,11 +148,11 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
     }
 
     /**
-     * 設定された読み取り方式に応じて unsigned short 文字コード配列の実装を作る。
+     * 設定された実体化方式に応じて unsigned short 文字コード配列の実装を作る。
      */
     public function getCharArrayInstance(int $count): CharArray
     {
-        if ($this->reduce) {
+        if ($this->materialization === ArrayMaterialization::Lazy()) {
             $array = CharDynamicArray::fromFile($this->fileName, $this->cur);
             $this->skipBytes($count * 2);
 

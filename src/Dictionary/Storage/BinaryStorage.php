@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IgoModern\Dictionary\Storage;
 
+use IgoModern\Binary\ArrayMaterialization;
 use IgoModern\Dictionary\Binary\BinaryConnectionMatrix;
 use IgoModern\Dictionary\Binary\BinaryUnknownWordDictionary;
 use IgoModern\Dictionary\Binary\BinaryWordDictionary;
@@ -15,7 +16,7 @@ use IgoModern\Dictionary\Contract\WordDictionary;
 /**
  * バイナリ辞書フォーマットを共有リーダで読み込む storage の共通基底。
  *
- * 3 実装の構築と getter を共有し、File/Memory の違いは配列の実体化方式（$reduce）だけに閉じる。
+ * 3 実装の構築と getter を共有し、File/Memory の違いは配列の実体化方式（ArrayMaterialization）だけに閉じる。
  */
 abstract class BinaryStorage implements DictionaryStorage
 {
@@ -57,14 +58,14 @@ abstract class BinaryStorage implements DictionaryStorage
      *
      * 未知語辞書は wordId 解決の不変条件を満たすため、同一の単語辞書を共有させる。
      */
-    final protected static function loadTrio(string $dir, bool $reduce): static
+    final protected static function loadTrio(string $dir, ArrayMaterialization $materialization): static
     {
-        $word = BinaryWordDictionary::fromDataDir($dir, $reduce);
+        $word = BinaryWordDictionary::fromDataDir($dir, $materialization);
 
         return new static(
             $word,
-            BinaryUnknownWordDictionary::fromDataDir($dir, $word, $reduce),
-            BinaryConnectionMatrix::fromDataDir($dir, $reduce),
+            BinaryUnknownWordDictionary::fromDataDir($dir, $word, $materialization),
+            BinaryConnectionMatrix::fromDataDir($dir, $materialization),
         );
     }
 }

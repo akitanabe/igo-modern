@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IgoModern\Dictionary\Trie;
 
+use IgoModern\Binary\ArrayMaterialization;
 use IgoModern\Binary\Contract\CharArray;
 use IgoModern\Binary\Contract\IntArray;
 use IgoModern\Binary\Contract\ShortArray;
@@ -29,11 +30,11 @@ class Searcher
     /**
      * 辞書バイナリから double-array trie と tail 情報を復元する。
      *
-     * $reduce は配列の実体化方式（true=遅延読み / false=常駐）を選ぶ内部限定の引数。
+     * 公開構築点は Storage 実装のみ。$materialization は配列の実体化方式（Lazy / Resident）を選ぶ内部限定の引数。
      */
-    public static function fromFile(string $filePath, bool $reduce = true): self
+    public static function fromFile(string $filePath, ?ArrayMaterialization $materialization = null): self
     {
-        $stream = FileMappedInputStream::fromFile($filePath, $reduce);
+        $stream = FileMappedInputStream::fromFile($filePath, $materialization);
 
         try {
             $nodeSize = $stream->getInt();
