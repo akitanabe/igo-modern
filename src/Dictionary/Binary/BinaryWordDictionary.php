@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace IgoModern\Dictionary\Binary;
 
 use IgoModern\Analysis\ViterbiNode;
-use IgoModern\Binary\Contract\ByteReaderFactory;
-use IgoModern\Binary\Contract\InputStreamFactory;
 use IgoModern\Binary\Contract\IntArray;
 use IgoModern\Binary\Contract\ShortArray;
 use IgoModern\Dictionary\Contract\WordDictionary;
@@ -32,37 +30,6 @@ class BinaryWordDictionary implements WordDictionary
         private ShortArray $rightIds,
         private ShortArray $costs,
     ) {}
-
-    /**
-     * 辞書ディレクトリ内の word2id, word.dat, word.ary.idx, word.inf を読み込む。
-     *
-     * 公開構築点は Storage 実装のみ。$streams は実体化方式を内包した stream ファクトリ（Storage が提供）。
-     * $byteReaderFactory は word.dat が常に要するランダムアクセス reader の生成元で、$streams と並走で渡す。
-     * word.dat は実体化方式に関係なくランダムアクセス reader が必要なため、Resident でも factory は必須。
-     */
-    public static function fromDataDir(
-        string $dataDir,
-        InputStreamFactory $streams,
-        ByteReaderFactory $byteReaderFactory,
-    ): self {
-        $stream = $streams->open($dataDir . '/word.inf');
-
-        try {
-            $wordCount = intdiv($stream->size(), 4 + 2 + 2 + 2);
-
-            return new self(
-                Searcher::fromFile($dataDir . '/word2id', $streams),
-                new WordDataReader($byteReaderFactory->open($dataDir . '/word.dat')),
-                self::readIndices($dataDir . '/word.ary.idx', $streams),
-                $stream->getIntArrayInstance($wordCount),
-                $stream->getShortArrayInstance($wordCount),
-                $stream->getShortArrayInstance($wordCount),
-                $stream->getShortArrayInstance($wordCount),
-            );
-        } finally {
-            $stream->close();
-        }
-    }
 
     /**
      * 指定位置から入力に一致する単語を trie で探し、単語候補ノードとして通知する。
@@ -106,20 +73,6 @@ class BinaryWordDictionary implements WordDictionary
                     $isSpace,
                 ),
             );
-        }
-    }
-
-    /**
-     * word.ary.idx 全体を PHP 配列へ展開せず、trie ID 範囲の参照に必要な int 配列 reader を作る。
-     */
-    private static function readIndices(string $fileName, InputStreamFactory $streams): IntArray
-    {
-        $stream = $streams->open($fileName);
-
-        try {
-            return $stream->getIntArrayInstance(intdiv($stream->size(), 4));
-        } finally {
-            $stream->close();
         }
     }
 }

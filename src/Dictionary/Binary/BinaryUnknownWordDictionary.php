@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace IgoModern\Dictionary\Binary;
 
-use IgoModern\Binary\Contract\InputStreamFactory;
 use IgoModern\Dictionary\CharCategory;
 use IgoModern\Dictionary\Contract\UnknownWordDictionary;
 use IgoModern\Dictionary\WordDicCallback;
@@ -27,19 +26,6 @@ class BinaryUnknownWordDictionary implements UnknownWordDictionary
         private BinaryWordDictionary $wordDic,
     ) {
         $this->spaceId = $this->category->category(32)->id;
-    }
-
-    /**
-     * 辞書ディレクトリから未知語カテゴリ辞書を読み込み、姉妹の単語辞書とともに保持する。
-     *
-     * 公開構築点は Storage 実装のみ。$streams は実体化方式を内包した stream ファクトリ（Storage が提供）。
-     */
-    public static function fromDataDir(
-        string $dataDir,
-        BinaryWordDictionary $wordDic,
-        InputStreamFactory $streams,
-    ): self {
-        return new self(CharCategory::fromDataDir($dataDir, $streams), $wordDic);
     }
 
     /**

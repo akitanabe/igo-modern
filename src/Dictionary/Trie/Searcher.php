@@ -27,10 +27,11 @@ class Searcher
     ) {}
 
     /**
-     * 辞書バイナリから double-array trie と tail 情報を復元する。
+     * 指定された単一の double-array trie ファイルから探索器を復元する。
      *
-     * 公開構築点は Storage 実装のみ。$streams は実体化方式を内包した stream ファクトリ（Storage が提供）で、
-     * 「ファイルを開いて順次読み、実体化方式に応じた配列を返す」プリミティブだけを契約として受け取る。
+     * Storage loader と Build 経路の互換的な構築点であり、辞書ディレクトリからの構築入口ではない。
+     * $streams は実体化方式を内包した stream ファクトリで、「ファイルを開いて順次読み、実体化方式に応じた
+     * 配列を返す」プリミティブだけを契約として受け取る。
      */
     public static function fromFile(string $filePath, InputStreamFactory $streams): self
     {

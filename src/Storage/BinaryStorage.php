@@ -12,9 +12,10 @@ use IgoModern\Dictionary\Contract\UnknownWordDictionary;
 use IgoModern\Dictionary\Contract\WordDictionary;
 
 /**
- * バイナリ辞書フォーマットを共有リーダで読み込む storage の共通基底。
+ * runtime 辞書一式を loader 契約から受け取って保持する storage の共通基底。
  *
- * 3 実装の構築と getter を共有し、File/Memory の違いは配列の実体化方式（ArrayMaterialization）だけに閉じる。
+ * 3 種類の辞書の保持と getter を共有し、辞書ディレクトリ構造・ファイル名・実体化方式の知識は loader へ委ねる。
+ * File/Memory の違いは、各サブクラスが渡す loader（実体化方式を内包）だけに閉じる。
  */
 abstract class BinaryStorage implements DictionaryStorage
 {
@@ -52,21 +53,15 @@ abstract class BinaryStorage implements DictionaryStorage
     }
 
     /**
-     * 辞書ディレクトリから 3 種類のバイナリ辞書を、指定の実体化方式で構築する。
+     * loader 契約から 3 種類のバイナリ辞書を受け取って storage を構築する。
      *
+     * 辞書ディレクトリ・ファイル名・実体化方式の知識は loader へ閉じ、storage はそれらを知らない。
      * 未知語辞書は wordId 解決の不変条件を満たすため、同一の単語辞書を共有させる。
      */
-    final protected static function loadTrio(string $dir, ArrayMaterialization $materialization): static
+    final protected static function loadTrio(BinaryDictionaryLoader $loader): static
     {
-        // ファイル reader と stream の生成点は storage に閉じ、各辞書へ InputStreamFactory として注入する。
-        $byteReaderFactory = new PagedByteReaderFactory();
-        $streams = new FileInputStreamFactory($materialization, $byteReaderFactory);
-        $word = BinaryWordDictionary::fromDataDir($dir, $streams, $byteReaderFactory);
+        $word = $loader->loadWordDictionary();
 
-        return new static(
-            $word,
-            BinaryUnknownWordDictionary::fromDataDir($dir, $word, $streams),
-            BinaryConnectionMatrix::fromDataDir($dir, $streams),
-        );
+        return new static($word, $loader->loadUnknownWordDictionary($word), $loader->loadConnectionMatrix());
     }
 }

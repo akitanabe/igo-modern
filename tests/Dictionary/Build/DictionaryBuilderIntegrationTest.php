@@ -5,14 +5,12 @@ declare(strict_types=1);
 namespace IgoModern\Tests\Dictionary\Build;
 
 use IgoModern\Analysis\ViterbiNode;
-use IgoModern\Dictionary\Binary\BinaryConnectionMatrix;
-use IgoModern\Dictionary\Binary\BinaryWordDictionary;
 use IgoModern\Dictionary\Build\DictionaryBuilder;
-use IgoModern\Dictionary\CharCategory;
 use IgoModern\Dictionary\Trie\CommonPrefixCallback;
 use IgoModern\Dictionary\Trie\Searcher;
 use IgoModern\Dictionary\WordDicCallback;
 use IgoModern\Igo;
+use IgoModern\Storage\FileBinaryDictionaryLoader;
 use IgoModern\Storage\FileInputStreamFactory;
 use IgoModern\Storage\FileStorage;
 use IgoModern\Storage\PagedByteReaderFactory;
@@ -95,13 +93,10 @@ class DictionaryBuilderIntegrationTest extends TestCase
 
         $factory = new PagedByteReaderFactory();
         $streams = FileInputStreamFactory::lazy($factory);
+        $loader = FileBinaryDictionaryLoader::forFileStorage($outputDirectory);
 
         $wordCallback = new CapturingIntegrationWordCallback();
-        BinaryWordDictionary::fromDataDir($outputDirectory, $streams, $factory)->search(
-            $this->utf16CodeUnits('猫AB'),
-            0,
-            $wordCallback,
-        );
+        $loader->loadWordDictionary()->search($this->utf16CodeUnits('猫AB'), 0, $wordCallback);
 
         $prefixCallback = new CapturingIntegrationPrefixCallback();
         Searcher::fromFile($outputDirectory . '/word2id', $streams)->eachCommonPrefix(
@@ -110,8 +105,8 @@ class DictionaryBuilderIntegrationTest extends TestCase
             $prefixCallback,
         );
 
-        $matrix = BinaryConnectionMatrix::fromDataDir($outputDirectory, $streams);
-        $category = CharCategory::fromDataDir($outputDirectory, $streams);
+        $matrix = $loader->loadConnectionMatrix();
+        $category = $loader->loadCharCategory();
 
         $this->assertSame([[3, 0, 1, -100, 0, 0, false]], $wordCallback->nodeSummaries());
         $this->assertSame([['start' => 0, 'offset' => 6]], $prefixCallback->ranges());

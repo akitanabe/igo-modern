@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace IgoModern\Dictionary;
 
-use IgoModern\Binary\Contract\InputStreamFactory;
 use IgoModern\Binary\Contract\IntArray;
 
 /**
@@ -24,28 +23,6 @@ class CharCategory
     ) {}
 
     /**
-     * 辞書ディレクトリからカテゴリ定義と文字コード別のカテゴリ・互換性表を読み込む。
-     *
-     * 公開構築点は Storage 実装のみ。$streams は実体化方式を内包した stream ファクトリ（Storage が提供）。
-     */
-    public static function fromDataDir(string $dataDir, InputStreamFactory $streams): self
-    {
-        $stream = $streams->open($dataDir . '/code2category');
-
-        try {
-            $count = intdiv($stream->size(), 4 * 2);
-
-            return new self(
-                self::readCategories($dataDir, $streams),
-                $stream->getIntArrayInstance($count),
-                $stream->getIntArrayInstance($count),
-            );
-        } finally {
-            $stream->close();
-        }
-    }
-
-    /**
      * 指定された文字コードに割り当てられた未知語カテゴリ定義を返す。
      */
     public function category(int $code): Category
@@ -59,38 +36,5 @@ class CharCategory
     public function isCompatible(int $code1, int $code2): bool
     {
         return ($this->eqlMasks->get($code1) & $this->eqlMasks->get($code2)) !== 0;
-    }
-
-    /**
-     * char.category の 4 int 1 組のレコードを Category のリストへ変換する。
-     *
-     * ByteReader を開かない順次読みでファイル全体を int 配列として読み切り、char.category 用 stream を確実に閉じる。
-     *
-     * @return list<Category>
-     */
-    private static function readCategories(string $dataDir, InputStreamFactory $streams): array
-    {
-        $stream = $streams->open($dataDir . '/char.category');
-
-        try {
-            $data = $stream->getIntArray(intdiv($stream->size(), 4));
-        } finally {
-            $stream->close();
-        }
-
-        $size = intdiv(count($data), 4);
-        $categories = [];
-
-        for ($i = 0; $i < $size; $i++) {
-            $base = $i * 4;
-            $categories[] = new Category(
-                $data[$base],
-                $data[$base + 1],
-                $data[$base + 2] === 1,
-                $data[$base + 3] === 1,
-            );
-        }
-
-        return $categories;
     }
 }

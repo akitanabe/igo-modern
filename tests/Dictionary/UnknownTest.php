@@ -5,11 +5,8 @@ declare(strict_types=1);
 namespace IgoModern\Tests\Dictionary;
 
 use IgoModern\Analysis\ViterbiNode;
-use IgoModern\Dictionary\Binary\BinaryUnknownWordDictionary;
-use IgoModern\Dictionary\Binary\BinaryWordDictionary;
 use IgoModern\Dictionary\WordDicCallback;
-use IgoModern\Storage\FileInputStreamFactory;
-use IgoModern\Storage\PagedByteReaderFactory;
+use IgoModern\Storage\FileBinaryDictionaryLoader;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -60,10 +57,9 @@ class UnknownTest extends TestCase
             [32 => 0, 65 => 1, 66 => 1, 67 => 1],
             [65 => 0b0001, 66 => 0b0001, 67 => 0b0010],
         );
-        $factory = new PagedByteReaderFactory();
-        $streams = FileInputStreamFactory::lazy($factory);
-        $wordDic = BinaryWordDictionary::fromDataDir($directory, $streams, $factory);
-        $unknown = BinaryUnknownWordDictionary::fromDataDir($directory, $wordDic, $streams);
+        $loader = FileBinaryDictionaryLoader::forFileStorage($directory);
+        $wordDic = $loader->loadWordDictionary();
+        $unknown = $loader->loadUnknownWordDictionary($wordDic);
         $callback = new CapturingUnknownCallback();
 
         $unknown->search([65, 66, 67], 0, $callback);
@@ -90,10 +86,9 @@ class UnknownTest extends TestCase
             [32 => 0, 70 => 1, 71 => 1, 72 => 1, 73 => 1],
             [70 => 0b0100, 71 => 0b0100, 72 => 0b0100, 73 => 0b1000],
         );
-        $factory = new PagedByteReaderFactory();
-        $streams = FileInputStreamFactory::lazy($factory);
-        $wordDic = BinaryWordDictionary::fromDataDir($directory, $streams, $factory);
-        $unknown = BinaryUnknownWordDictionary::fromDataDir($directory, $wordDic, $streams);
+        $loader = FileBinaryDictionaryLoader::forFileStorage($directory);
+        $wordDic = $loader->loadWordDictionary();
+        $unknown = $loader->loadUnknownWordDictionary($wordDic);
         $callback = new CapturingUnknownCallback();
 
         $unknown->search([70, 71, 72, 73], 0, $callback);
@@ -121,10 +116,9 @@ class UnknownTest extends TestCase
             [32 => 0, 80 => 1],
             [80 => 0b0001],
         );
-        $factory = new PagedByteReaderFactory();
-        $streams = FileInputStreamFactory::lazy($factory);
-        $wordDic = BinaryWordDictionary::fromDataDir($directory, $streams, $factory);
-        $unknown = BinaryUnknownWordDictionary::fromDataDir($directory, $wordDic, $streams);
+        $loader = FileBinaryDictionaryLoader::forFileStorage($directory);
+        $wordDic = $loader->loadWordDictionary();
+        $unknown = $loader->loadUnknownWordDictionary($wordDic);
         $callback = new CapturingUnknownCallback(false);
 
         $unknown->search([80], 0, $callback);
@@ -144,10 +138,9 @@ class UnknownTest extends TestCase
             [32 => 0],
             [32 => 0b0001],
         );
-        $factory = new PagedByteReaderFactory();
-        $streams = FileInputStreamFactory::lazy($factory);
-        $wordDic = BinaryWordDictionary::fromDataDir($directory, $streams, $factory);
-        $unknown = BinaryUnknownWordDictionary::fromDataDir($directory, $wordDic, $streams);
+        $loader = FileBinaryDictionaryLoader::forFileStorage($directory);
+        $wordDic = $loader->loadWordDictionary();
+        $unknown = $loader->loadUnknownWordDictionary($wordDic);
         $callback = new CapturingUnknownCallback();
 
         $unknown->search([32, 32], 0, $callback);

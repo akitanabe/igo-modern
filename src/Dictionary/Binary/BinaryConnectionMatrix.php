@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace IgoModern\Dictionary\Binary;
 
-use IgoModern\Binary\Contract\InputStreamFactory;
 use IgoModern\Binary\Contract\ShortArray;
 use IgoModern\Dictionary\Contract\ConnectionMatrix;
 
@@ -20,25 +19,6 @@ class BinaryConnectionMatrix implements ConnectionMatrix
         private int $leftSize,
         private ShortArray $matrix,
     ) {}
-
-    /**
-     * 辞書ディレクトリの matrix.bin を開き、ヘッダサイズとコスト表を読み込む。
-     *
-     * 公開構築点は Storage 実装のみ。$streams は実体化方式を内包した stream ファクトリ（Storage が提供）。
-     */
-    public static function fromDataDir(string $dataDir, InputStreamFactory $streams): self
-    {
-        $stream = $streams->open($dataDir . '/matrix.bin');
-
-        try {
-            $leftSize = $stream->getInt();
-            $rightSize = $stream->getInt();
-
-            return new self($leftSize, $stream->getShortArrayInstance($leftSize * $rightSize));
-        } finally {
-            $stream->close();
-        }
-    }
 
     /**
      * 右 ID を行、左 ID を列として平坦化された連接コストを返す。

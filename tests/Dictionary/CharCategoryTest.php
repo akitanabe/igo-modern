@@ -4,57 +4,34 @@ declare(strict_types=1);
 
 namespace IgoModern\Tests\Dictionary;
 
+use IgoModern\Binary\Contract\IntArray;
+use IgoModern\Binary\IntMemoryArray;
 use IgoModern\Dictionary\Category;
 use IgoModern\Dictionary\CharCategory;
-use IgoModern\Storage\FileInputStreamFactory;
-use IgoModern\Storage\PagedByteReaderFactory;
-use IgoModern\Tests\Support\RecordingByteReaderFactory;
 use PHPUnit\Framework\TestCase;
+use SplFixedArray;
 
 /**
- * CharCategory が文字コードごとの未知語カテゴリと互換性マスクを読む挙動を検証するテスト。
+ * CharCategory が構築済みのカテゴリ定義と文字コード表から、カテゴリ参照と互換性判定を行う挙動を検証するテスト。
+ *
+ * ファイル配置からの構築は Storage loader の責務へ移ったため、ここでは constructor に構築済みデータを渡す純粋テストにする。
  */
 class CharCategoryTest extends TestCase
 {
-    /** @var list<string> テスト中に作成した一時ディレクトリの削除対象を保持する。 */
-    private array $temporaryDirectories = [];
-
-    /**
-     * テストで作成した辞書ディレクトリとカテゴリファイルを削除して状態を戻す。
-     */
-    protected function tearDown(): void
-    {
-        foreach ($this->temporaryDirectories as $directory) {
-            foreach (['char.category', 'code2category'] as $fileName) {
-                $filePath = $directory . '/' . $fileName;
-
-                if (is_file($filePath)) {
-                    unlink($filePath);
-                }
-            }
-
-            if (is_dir($directory)) {
-                rmdir($directory);
-            }
-        }
-    }
-
     /**
      * category が文字コードに割り当てられたカテゴリ定義を返すことを確認する。
      */
     public function testCategoryReturnsCategoryAssignedToCharacterCode(): void
     {
-        $category = CharCategory::fromDataDir(
-            $this->createDictionaryDirectory(
-                [
-                    ['id' => 0, 'length' => 1, 'invoke' => false, 'group' => false],
-                    ['id' => 7, 'length' => 3, 'invoke' => true, 'group' => false],
-                    ['id' => 9, 'length' => 5, 'invoke' => false, 'group' => true],
-                ],
-                [65 => 1, 66 => 2],
-                [65 => 0b0011, 66 => 0b0100],
-            ),
-            FileInputStreamFactory::lazy(new PagedByteReaderFactory()),
+        $category = new CharCategory(
+            [
+                new Category(0, 1, false, false),
+                new Category(7, 3, true, false),
+                new Category(9, 5, false, true),
+            ],
+            // 文字コード 65 -> カテゴリ index 1、66 -> index 2、その他 -> index 0。
+            $this->intArray([65 => 1, 66 => 2]),
+            $this->intArray([65 => 0b0011, 66 => 0b0100]),
         );
 
         $latinA = $category->category(65);
@@ -76,16 +53,13 @@ class CharCategoryTest extends TestCase
      */
     public function testIsCompatibleUsesSharedMaskBits(): void
     {
-        $category = CharCategory::fromDataDir(
-            $this->createDictionaryDirectory(
-                [
-                    ['id' => 0, 'length' => 1, 'invoke' => false, 'group' => false],
-                    ['id' => 1, 'length' => 2, 'invoke' => true, 'group' => true],
-                ],
-                [65 => 1, 66 => 1, 67 => 1],
-                [65 => 0b0011, 66 => 0b0010, 67 => 0b0100],
-            ),
-            FileInputStreamFactory::lazy(new PagedByteReaderFactory()),
+        $category = new CharCategory(
+            [
+                new Category(0, 1, false, false),
+                new Category(1, 2, true, true),
+            ],
+            $this->intArray([65 => 1, 66 => 1, 67 => 1]),
+            $this->intArray([65 => 0b0011, 66 => 0b0010, 67 => 0b0100]),
         );
 
         $this->assertTrue($category->isCompatible(65, 66));
@@ -93,90 +67,19 @@ class CharCategoryTest extends TestCase
     }
 
     /**
-     * 注入された factory が code2category に対し open され、Lazy 配列生成へ漏れなく伝播することを確認する。
-     */
-    public function testFactoryIsPropagatedToCode2CategoryFile(): void
-    {
-        $directory = $this->createDictionaryDirectory(
-            [['id' => 0, 'length' => 1, 'invoke' => false, 'group' => false]],
-            [65 => 0],
-            [65 => 0b0001],
-        );
-        $factory = new RecordingByteReaderFactory();
-
-        CharCategory::fromDataDir($directory, FileInputStreamFactory::lazy($factory));
-
-        $openedBaseNames = array_values(array_unique(array_map('basename', $factory->openedFiles)));
-
-        $this->assertSame(['code2category'], $openedBaseNames);
-    }
-
-    /**
-     * テスト用の辞書ディレクトリを作り、カテゴリ辞書を旧実装と同じバイナリ形式で配置する。
+     * 文字コードを添字とする int 配列を、指定値以外を 0 埋めした IntArray として構築する。
      *
-     * @param list<array{id:int, length:int, invoke:bool, group:bool}> $categories
-     * @param array<int, int> $charToCategoryIds
-     * @param array<int, int> $eqlMasks
+     * @param non-empty-array<int, int> $values
      */
-    private function createDictionaryDirectory(array $categories, array $charToCategoryIds, array $eqlMasks): string
+    private function intArray(array $values): IntArray
     {
-        $baseName = tempnam(sys_get_temp_dir(), 'igo-char-category-');
-        $this->assertIsString($baseName);
-        unlink($baseName);
-        mkdir($baseName);
-        $this->temporaryDirectories[] = $baseName;
+        $size = max(array_keys($values)) + 1;
+        $dense = array_fill(0, $size, 0);
 
-        $maxCode = max(array_merge([0], array_keys($charToCategoryIds), array_keys($eqlMasks)));
-        $charToCategory = array_fill(0, $maxCode + 1, 0);
-        $masks = array_fill(0, $maxCode + 1, 0);
-
-        foreach ($charToCategoryIds as $code => $categoryId) {
-            $charToCategory[$code] = $categoryId;
+        foreach ($values as $code => $value) {
+            $dense[$code] = $value;
         }
 
-        foreach ($eqlMasks as $code => $mask) {
-            $masks[$code] = $mask;
-        }
-
-        $categoryValues = [];
-        foreach ($categories as $category) {
-            $categoryValues[] = $category['id'];
-            $categoryValues[] = $category['length'];
-            $categoryValues[] = $category['invoke'] ? 1 : 0;
-            $categoryValues[] = $category['group'] ? 1 : 0;
-        }
-
-        $this->writeFile($baseName . '/char.category', $this->packValues('l', $categoryValues));
-        $this->writeFile(
-            $baseName . '/code2category',
-            $this->packValues('l', array_values($charToCategory)) . $this->packValues('l', array_values($masks)),
-        );
-
-        return $baseName;
-    }
-
-    /**
-     * 指定パスにバイナリ辞書を書き込み、内容が欠けずに保存されたことを確認する。
-     */
-    private function writeFile(string $filePath, string $contents): void
-    {
-        $writtenBytes = file_put_contents($filePath, $contents);
-        $this->assertSame(strlen($contents), $writtenBytes);
-    }
-
-    /**
-     * 旧実装と同じ pack 形式で数値列をバイナリ文字列へ変換する。
-     *
-     * @param list<int> $values
-     */
-    private function packValues(string $format, array $values): string
-    {
-        $binary = '';
-
-        foreach ($values as $value) {
-            $binary .= pack($format, $value);
-        }
-
-        return $binary;
+        return new IntMemoryArray(SplFixedArray::fromArray($dense, false));
     }
 }

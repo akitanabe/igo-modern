@@ -9,8 +9,8 @@ use IgoModern\Binary\IntDynamicArray;
 use IgoModern\Binary\IntMemoryArray;
 use IgoModern\Dictionary\Binary\BinaryWordDictionary;
 use IgoModern\Dictionary\WordDicCallback;
+use IgoModern\Storage\FileBinaryDictionaryLoader;
 use IgoModern\Storage\FileInputStreamFactory;
-use IgoModern\Storage\PagedByteReaderFactory;
 use IgoModern\Tests\Support\RecordingByteReaderFactory;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
@@ -48,11 +48,7 @@ class WordDicTest extends TestCase
      */
     public function testSearchExpandsTrieMatchesIntoWordNodes(): void
     {
-        $wordDic = BinaryWordDictionary::fromDataDir(
-            $this->createDictionaryDirectory(),
-            FileInputStreamFactory::lazy(new PagedByteReaderFactory()),
-            new PagedByteReaderFactory(),
-        );
+        $wordDic = FileBinaryDictionaryLoader::forFileStorage($this->createDictionaryDirectory())->loadWordDictionary();
         $callback = new CapturingWordDicCallback();
 
         $wordDic->search([10, 20, 30, 99], 0, $callback);
@@ -72,11 +68,7 @@ class WordDicTest extends TestCase
      */
     public function testCallWordRangeUsesGivenRangeAndSpaceFlag(): void
     {
-        $wordDic = BinaryWordDictionary::fromDataDir(
-            $this->createDictionaryDirectory(),
-            FileInputStreamFactory::lazy(new PagedByteReaderFactory()),
-            new PagedByteReaderFactory(),
-        );
+        $wordDic = FileBinaryDictionaryLoader::forFileStorage($this->createDictionaryDirectory())->loadWordDictionary();
         $callback = new CapturingWordDicCallback();
 
         $wordDic->callWordRange(0, 5, 4, true, $callback);
@@ -95,11 +87,7 @@ class WordDicTest extends TestCase
      */
     public function testWordDataReturnsFeatureBytesByWordOffsets(): void
     {
-        $wordDic = BinaryWordDictionary::fromDataDir(
-            $this->createDictionaryDirectory(),
-            FileInputStreamFactory::lazy(new PagedByteReaderFactory()),
-            new PagedByteReaderFactory(),
-        );
+        $wordDic = FileBinaryDictionaryLoader::forFileStorage($this->createDictionaryDirectory())->loadWordDictionary();
 
         $this->assertSame($this->packValues('S', [1000, 1001]), $wordDic->wordData(0));
         $this->assertSame($this->packValues('S', [2000]), $wordDic->wordData(1));
@@ -115,31 +103,29 @@ class WordDicTest extends TestCase
         $indicesProperty = new ReflectionProperty(BinaryWordDictionary::class, 'indices');
         $indicesProperty->setAccessible(true);
 
-        $dynamic = BinaryWordDictionary::fromDataDir(
+        $dynamic = FileBinaryDictionaryLoader::forFileStorage($this->createDictionaryDirectory())->loadWordDictionary();
+        $resident = FileBinaryDictionaryLoader::forMemoryStorage(
             $this->createDictionaryDirectory(),
-            FileInputStreamFactory::lazy(new PagedByteReaderFactory()),
-            new PagedByteReaderFactory(),
-        );
-        $resident = BinaryWordDictionary::fromDataDir(
-            $this->createDictionaryDirectory(),
-            FileInputStreamFactory::resident(new PagedByteReaderFactory()),
-            new PagedByteReaderFactory(),
-        );
+        )->loadWordDictionary();
 
         $this->assertInstanceOf(IntDynamicArray::class, $indicesProperty->getValue($dynamic));
         $this->assertInstanceOf(IntMemoryArray::class, $indicesProperty->getValue($resident));
     }
 
     /**
-     * 注入された factory が word2id / word.dat / word.ary.idx / word.inf 全てに対し open され、
-     * Searcher / WordDataReader / readIndices / 本体ストリームへ漏れなく伝播することを確認する。
+     * loader へ注入した factory が word2id / word.dat / word.ary.idx / word.inf 全てに対し open され、
+     * Searcher / WordDataReader / word.ary.idx reader / 本体ストリームへ漏れなく伝播することを確認する。
      */
     public function testFactoryIsPropagatedToEveryWordDictionaryFile(): void
     {
         $directory = $this->createDictionaryDirectory();
         $factory = new RecordingByteReaderFactory();
 
-        BinaryWordDictionary::fromDataDir($directory, FileInputStreamFactory::lazy($factory), $factory);
+        (new FileBinaryDictionaryLoader(
+            $directory,
+            FileInputStreamFactory::lazy($factory),
+            $factory,
+        ))->loadWordDictionary();
 
         $openedBaseNames = array_values(array_unique(array_map('basename', $factory->openedFiles)));
         sort($openedBaseNames);

@@ -14,6 +14,6 @@ final class FileStorage extends BinaryStorage
      */
     public static function fromDataDir(string $dir): self
     {
-        return self::loadTrio($dir, ArrayMaterialization::Lazy());
+        return self::loadTrio(FileBinaryDictionaryLoader::forFileStorage($dir));
     }
 }

@@ -51,7 +51,8 @@ Binary ← Dictionary ← Storage の依存方向を維持する）。
 `char.category` などのファイル配置）を Storage 内部 loader へ寄せる。
 
 実装方針は[runtime 辞書 loader へのディレクトリ構造集約プラン](dictionary-storage-runtime-loader-plan.md)に基づく。
-`BinaryDictionaryLoader` 契約と File/Memory 実装を追加し、runtime 辞書クラスの `fromDataDir` を
-Storage loader へ移す。辞書クラスは構築済み部品を受け取って検索・未知語生成・連接コスト参照を行う
-責務に寄せる。`Word2IdCategoryIdResolver` は今回の対象外とし、`Searcher::fromFile` は
-Build 経路との互換的な構築点として残す。
+`BinaryDictionaryLoader` 契約とファイル辞書用 loader 実装を追加し、File/Memory の実体化方針は
+named constructor で切り替える。runtime 辞書クラスの `fromDataDir` は Storage loader へ移し、
+辞書クラスは構築済み部品を受け取って検索・未知語生成・連接コスト参照を行う責務に寄せる。
+`Word2IdCategoryIdResolver` は今回の対象外とし、`Searcher::fromFile` は Build 経路との互換的な
+構築点として残す。
