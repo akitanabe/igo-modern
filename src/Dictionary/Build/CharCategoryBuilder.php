@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IgoModern\Dictionary\Build;
 
+use IgoModern\Dictionary\Trie\TrieLoader;
 use RuntimeException;
 
 /**
@@ -25,9 +26,9 @@ class CharCategoryBuilder implements DictionaryBuildStep
     /**
      * 通常利用向けに word2id を参照する標準 resolver を注入した builder を組み立てる。
      */
-    public static function createDefault(): self
+    public static function createDefault(TrieLoader $trieLoader): self
     {
-        return new self(new Word2IdCategoryIdResolver());
+        return new self(new Word2IdCategoryIdResolver($trieLoader));
     }
 
     /**

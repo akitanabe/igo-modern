@@ -6,6 +6,7 @@ namespace IgoModern\Console;
 
 use IgoModern\Igo;
 use IgoModern\Parser;
+use IgoModern\Storage\FileStorage;
 use RuntimeException;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -40,9 +41,10 @@ class ParseCommand extends Command
      */
     public static function createDefault(): self
     {
-        return new self(
-            static fn(string $dataDir, ?string $outputEncoding): Parser => Igo::fromDictDir($dataDir, $outputEncoding),
-        );
+        return new self(static fn(string $dataDir, ?string $outputEncoding): Parser => Igo::fromStorage(
+            FileStorage::fromDataDir($dataDir),
+            $outputEncoding,
+        ));
     }
 
     /**

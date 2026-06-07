@@ -106,6 +106,7 @@ php bin/bench parse --dictionary=dist/igo-dic
 ```bash
 XDEBUG_MODE=off php bin/bench parse \
   --dictionary=dist/igo-dic \
+  --storage=memory \
   --sample=news \
   --warmup=1 \
   --iterations=10
@@ -116,7 +117,8 @@ XDEBUG_MODE=off php bin/bench parse \
 - `-d` / `--dictionary`: 測定に使う Igo 形式辞書ディレクトリです。
 - `-r` / `--iterations`: 実測する parse 回数です。未指定時は `3` です。
 - `-w` / `--warmup`: 測定前に捨て実行する parse 回数です。未指定時は `0` です。
-- `-s` / `--sample`: 組み込みサンプルです。`short`、`news`、`mixed` を指定できます。
+- `--sample`: 組み込みサンプルです。`short`、`news`、`mixed` を指定できます。
+- `-s` / `--storage`: 辞書の読み込み方式です。`file`、`memory` を指定できます。未指定時は `file` です。
 - `-i` / `--text`: 測定対象テキストを直接指定します。
 - `-f` / `--file`: UTF-8 の測定対象ファイルを指定します。
 - `-o` / `--output`: ベンチマークレポートをファイルへ保存します。
@@ -149,6 +151,8 @@ XDEBUG_MODE=off php bin/bench parse \
 PHP API の使い方
 ---------------
 
+`Igo` インスタンスは、辞書ストレージを `Igo::fromStorage()` に渡して構築します。辞書ディレクトリからストレージを生成するには、`FileStorage::fromDataDir()` を使用します。
+
 形態素解析の例です。
 
 ```php
@@ -159,8 +163,10 @@ declare(strict_types=1);
 require __DIR__ . '/vendor/autoload.php';
 
 use IgoModern\Igo;
+use IgoModern\Storage\FileStorage;
 
-$igo = Igo::fromDictDir('/path/to/igo-dic', 'UTF-8');
+$storage = FileStorage::fromDataDir('/path/to/igo-dic');
+$igo = Igo::fromStorage($storage, 'UTF-8');
 $morphemes = $igo->parse('すもももももももものうち');
 
 foreach ($morphemes as $morpheme) {
@@ -178,27 +184,44 @@ declare(strict_types=1);
 require __DIR__ . '/vendor/autoload.php';
 
 use IgoModern\Igo;
+use IgoModern\Storage\FileStorage;
 
-$igo = Igo::fromDictDir('/path/to/igo-dic', 'UTF-8');
+$storage = FileStorage::fromDataDir('/path/to/igo-dic');
+$igo = Igo::fromStorage($storage, 'UTF-8');
 $surfaces = $igo->wakati('すもももももももものうち');
 
 print_r($surfaces);
 ```
 
-辞書ディレクトリと出力エンコーディングは、`fromDictDir()` に渡します。第 2 引数を省略した場合は、辞書から読み込んだ結果をそのまま返します。
+出力エンコーディングは、`fromStorage()` の第 2 引数で指定します。第 2 引数を省略した場合は、辞書から読み込んだ結果をそのまま返します。
 
 ```php
-$igo = Igo::fromDictDir('/path/to/igo-dic');
-$igoWithUtf8Output = Igo::fromDictDir('/path/to/igo-dic', 'UTF-8');
+$storage = FileStorage::fromDataDir('/path/to/igo-dic');
+$igo = Igo::fromStorage($storage);
+$igoWithUtf8Output = Igo::fromStorage($storage, 'UTF-8');
 ```
 
-辞書読み込みや解析で例外を呼び出し側に出したくない場合は、失敗時に `null` を返す `tryFromDictDir()`、`tryParse()`、`tryWakati()` を利用できます。
+辞書ストレージには、辞書配列をアクセスごとに遅延読みする `FileStorage` のほかに、辞書配列をすべてメモリへ常駐させる `MemoryStorage` を選べます。いずれも `fromDataDir()` に同じ辞書ディレクトリを渡します。
 
 ```php
-$igo = Igo::tryFromDictDir('/path/to/igo-dic', 'UTF-8');
+use IgoModern\Storage\MemoryStorage;
 
-if ($igo !== null) {
-    $morphemes = $igo->tryParse('すもももももももものうち');
+$storage = MemoryStorage::fromDataDir('/path/to/igo-dic');
+$igo = Igo::fromStorage($storage, 'UTF-8');
+```
+
+辞書ディレクトリの読み込みに失敗した場合、`FileStorage::fromDataDir()` などのストレージ生成メソッドは例外を送出します。
+
+解析で例外を呼び出し側に出したくない場合は、失敗時に `null` を返す `tryParse()`、`tryWakati()` を利用できます。
+
+```php
+$storage = FileStorage::fromDataDir('/path/to/igo-dic');
+$igo = Igo::fromStorage($storage, 'UTF-8');
+
+$morphemes = $igo->tryParse('すもももももももものうち');
+
+if ($morphemes !== null) {
+    // 解析成功時のみ $morphemes を利用する
 }
 ```
 

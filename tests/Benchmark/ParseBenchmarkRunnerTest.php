@@ -46,9 +46,11 @@ class ParseBenchmarkRunnerTest extends TestCase
      */
     public function testRunUsesInjectedParserFactory(): void
     {
-        $createdDictionaries = [];
-        $runner = new ParseBenchmarkRunner(static function (string $dictionary) use (&$createdDictionaries): Parser {
-            $createdDictionaries[] = $dictionary;
+        $createdInputs = [];
+        $runner = new ParseBenchmarkRunner(static function (string $dictionary, string $storage) use (
+            &$createdInputs,
+        ): Parser {
+            $createdInputs[] = [$dictionary, $storage];
 
             return new BenchmarkStubParser([
                 new Morpheme('alpha', 'FEATURE_ALPHA', 0),
@@ -56,11 +58,27 @@ class ParseBenchmarkRunnerTest extends TestCase
             ]);
         });
 
-        $result = $runner->run(new ParseBenchmarkConfig('/tmp/dictionary', 1, 0, 'mixed', 'alpha beta'));
+        $result = $runner->run(
+            new ParseBenchmarkConfig('/tmp/dictionary', 1, 0, 'mixed', 'alpha beta', null, 'memory'),
+        );
 
-        $this->assertSame(['/tmp/dictionary'], $createdDictionaries);
+        $this->assertSame([['/tmp/dictionary', 'memory']], $createdInputs);
         $this->assertSame(2, $result->morphemes);
         $this->assertSame(["alpha\tFEATURE_ALPHA,0", "beta\tFEATURE_BETA,5"], $result->morphemeOutputLines);
+    }
+
+    /**
+     * 未対応の storage 種別は parser 生成前に入力エラーとして拒否することを確認する。
+     */
+    public function testRunRejectsUnsupportedStorage(): void
+    {
+        $runner = new ParseBenchmarkRunner(function (): Parser {
+            $this->fail('Unsupported storage must be rejected before parser creation.');
+        });
+
+        $this->expectExceptionMessage('storage must be file or memory.');
+
+        $runner->run(new ParseBenchmarkConfig('/tmp/dictionary', 1, 0, 'mixed', 'alpha', null, 'sqlite'));
     }
 
     /**
@@ -69,7 +87,10 @@ class ParseBenchmarkRunnerTest extends TestCase
      */
     public function testRunReportsSeparatedMemoryMetrics(): void
     {
-        $runner = new ParseBenchmarkRunner(static fn(string $dictionary): Parser => new BenchmarkStubParser([
+        $runner = new ParseBenchmarkRunner(static fn(
+            string $dictionary,
+            string $storage,
+        ): Parser => new BenchmarkStubParser([
             new Morpheme('alpha', 'FEATURE_ALPHA', 0),
         ]));
 

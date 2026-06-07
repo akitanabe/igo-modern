@@ -7,7 +7,7 @@ namespace IgoModern\Analysis;
 use IgoModern\Dictionary\WordDicCallback;
 
 /**
- * WordDic と Unknown から通知された候補を、開始位置ごとのラティスへ接続する。
+ * 単語辞書と未知語辞書から通知された候補を、開始位置ごとのラティスへ接続する。
  */
 class MakeLattice implements WordDicCallback
 {

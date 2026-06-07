@@ -7,6 +7,7 @@ namespace IgoModern\Tests\Dictionary\Trie;
 use IgoModern\Binary\CharDynamicArray;
 use IgoModern\Dictionary\Trie\CommonPrefixCallback;
 use IgoModern\Dictionary\Trie\Searcher;
+use IgoModern\Storage\Loader\FileTrieLoader;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
 
@@ -37,7 +38,7 @@ class SearcherTest extends TestCase
      */
     public function testSizeAndIdFollowDictionaryEncoding(): void
     {
-        $searcher = Searcher::fromFile($this->createDictionaryFile());
+        $searcher = FileTrieLoader::forBuild()->load($this->createDictionaryFile());
 
         $this->assertSame(2, $searcher->size());
         $this->assertSame(0, Searcher::ID(-1));
@@ -49,7 +50,7 @@ class SearcherTest extends TestCase
      */
     public function testEachCommonPrefixCallsCallbackForTerminalAndTailMatches(): void
     {
-        $searcher = Searcher::fromFile($this->createDictionaryFile());
+        $searcher = FileTrieLoader::forBuild()->load($this->createDictionaryFile());
         $callback = new CapturingCommonPrefixCallback();
 
         $searcher->eachCommonPrefix([10, 20, 30, 99], 0, $callback);
@@ -68,7 +69,7 @@ class SearcherTest extends TestCase
      */
     public function testEachCommonPrefixUsesStartOffsetAndSkipsMissingPrefix(): void
     {
-        $searcher = Searcher::fromFile($this->createDictionaryFile());
+        $searcher = FileTrieLoader::forBuild()->load($this->createDictionaryFile());
         $callback = new CapturingCommonPrefixCallback();
 
         $searcher->eachCommonPrefix([99, 10, 20, 30], 1, $callback);
@@ -88,7 +89,7 @@ class SearcherTest extends TestCase
      */
     public function testTailIsReadDynamically(): void
     {
-        $searcher = Searcher::fromFile($this->createDictionaryFile());
+        $searcher = FileTrieLoader::forBuild()->load($this->createDictionaryFile());
         $tailProperty = new ReflectionProperty(Searcher::class, 'tail');
         $tailProperty->setAccessible(true);
 

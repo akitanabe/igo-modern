@@ -43,6 +43,23 @@ class BuildDicCommandTest extends TestCase
     }
 
     /**
+     * createDefault() が生成する DictionaryBuilder factory が FileTrieLoader を注入することを確認する。
+     *
+     * factory を実行することで FileTrieLoader::forBuild() を内包する標準構成が組み立てられ、
+     * Storage 具象の注入漏れが CLI 経路で検知できる。
+     */
+    public function testCreateDefaultInjectsFileTrieLoader(): void
+    {
+        $command = BuildDicCommand::createDefault();
+        $factoryProperty = (new ReflectionClass(BuildDicCommand::class))->getProperty('builderFactory');
+        $factoryProperty->setAccessible(true);
+
+        $builder = $factoryProperty->getValue($command)();
+
+        $this->assertInstanceOf(DictionaryBuilder::class, $builder);
+    }
+
+    /**
      * 辞書生成に必要な値を、位置引数ではなく短縮名付きオプションとして発見できることを確認する。
      */
     public function testConfigureDefinesShortOptionsForBuildInputs(): void

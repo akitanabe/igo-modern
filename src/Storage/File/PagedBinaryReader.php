@@ -2,14 +2,15 @@
 
 declare(strict_types=1);
 
-namespace IgoModern\Binary;
+namespace IgoModern\Storage\File;
 
+use IgoModern\Binary\Contract\ByteReader;
 use RuntimeException;
 
 /**
  * バイナリファイルを固定サイズページ単位で読み、直近ページを再利用する。
  */
-class PagedBinaryReader
+class PagedBinaryReader implements ByteReader
 {
     /** dynamic array のランダムアクセスで使う既定ページサイズを保持する。 */
     private const DEFAULT_PAGE_SIZE = 8192;
@@ -39,20 +40,6 @@ class PagedBinaryReader
 
         $this->file = $file;
         $this->pageSize = $pageSize;
-    }
-
-    /**
-     * 読み取り対象ファイルを開き、ページ読み込み reader を作る。
-     */
-    public static function fromFile(string $fileName, int $pageSize = self::DEFAULT_PAGE_SIZE): self
-    {
-        $file = fopen($fileName, 'rb');
-
-        if ($file === false) {
-            throw new RuntimeException('dictionary reading failed.');
-        }
-
-        return new self($file, $pageSize);
     }
 
     /**

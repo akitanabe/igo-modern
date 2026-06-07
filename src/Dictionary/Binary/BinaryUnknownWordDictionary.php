@@ -2,39 +2,38 @@
 
 declare(strict_types=1);
 
-namespace IgoModern\Dictionary;
+namespace IgoModern\Dictionary\Binary;
+
+use IgoModern\Dictionary\CharCategory;
+use IgoModern\Dictionary\Contract\UnknownWordDictionary;
+use IgoModern\Dictionary\WordDicCallback;
 
 /**
  * 文字カテゴリ定義に従い、通常辞書にない文字列を未知語候補として検索する。
  */
-class Unknown
+class BinaryUnknownWordDictionary implements UnknownWordDictionary
 {
     /** SPACE として予約された文字カテゴリの辞書 ID を保持する。 */
     private int $spaceId;
 
     /**
-     * 事前に読み込まれた文字カテゴリ辞書を保持し、SPACE カテゴリ ID を確定する。
+     * 文字カテゴリ辞書と、候補生成に使う姉妹の単語辞書を保持し、SPACE カテゴリ ID を確定する。
+     *
+     * 未知語候補の wordId が同一 storage で解決可能であるよう、具象 BinaryWordDictionary を保持する。
      */
     public function __construct(
         private CharCategory $category,
+        private BinaryWordDictionary $wordDic,
     ) {
         $this->spaceId = $this->category->category(32)->id;
     }
 
     /**
-     * 辞書ディレクトリから未知語カテゴリ辞書を読み込む。
-     */
-    public static function fromDataDir(string $dataDir): self
-    {
-        return new self(CharCategory::fromDataDir($dataDir));
-    }
-
-    /**
-     * 指定位置の文字カテゴリから未知語候補の長さを決め、WordDic 経由で候補ノードを通知する。
+     * 指定位置の文字カテゴリから未知語候補の長さを決め、単語辞書の範囲展開で候補ノードを通知する。
      *
      * @param list<int> $text
      */
-    public function search(array $text, int $start, WordDic $wordDic, WordDicCallback $fn): void
+    public function search(array $text, int $start, WordDicCallback $fn): void
     {
         $firstCode = $text[$start];
         $category = $this->category->category($firstCode);
@@ -49,7 +48,7 @@ class Unknown
         $position = $start;
 
         for (; $position < $limit; $position++) {
-            $wordDic->searchFromTrieId($category->id, $start, $position - $start + 1, $isSpace, $fn);
+            $this->wordDic->callWordRange($category->id, $start, $position - $start + 1, $isSpace, $fn);
 
             if (($position + 1) !== $limit && !$this->category->isCompatible($firstCode, $text[$position + 1])) {
                 return;
@@ -57,7 +56,7 @@ class Unknown
         }
 
         if ($category->group && $position < $textLength) {
-            $this->searchGroupedCandidate($text, $start, $position, $category->id, $isSpace, $wordDic, $fn);
+            $this->searchGroupedCandidate($text, $start, $position, $category->id, $isSpace, $fn);
         }
     }
 
@@ -72,7 +71,6 @@ class Unknown
         int $position,
         int $categoryId,
         bool $isSpace,
-        WordDic $wordDic,
         WordDicCallback $fn,
     ): void {
         $firstCode = $text[$start];
@@ -83,11 +81,11 @@ class Unknown
                 continue;
             }
 
-            $wordDic->searchFromTrieId($categoryId, $start, $position - $start, $isSpace, $fn);
+            $this->wordDic->callWordRange($categoryId, $start, $position - $start, $isSpace, $fn);
 
             return;
         }
 
-        $wordDic->searchFromTrieId($categoryId, $start, $textLength - $start, $isSpace, $fn);
+        $this->wordDic->callWordRange($categoryId, $start, $textLength - $start, $isSpace, $fn);
     }
 }

@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace IgoModern\Analysis;
 
-use IgoModern\Dictionary\Matrix;
-use IgoModern\Dictionary\Unknown;
-use IgoModern\Dictionary\WordDic;
+use IgoModern\Dictionary\Contract\ConnectionMatrix;
+use IgoModern\Dictionary\Contract\UnknownWordDictionary;
+use IgoModern\Dictionary\Contract\WordDictionary;
 use IgoModern\Morpheme;
+use IgoModern\Storage\DictionaryStorage;
 use RuntimeException;
 
 /**
@@ -28,9 +29,9 @@ class Tagger
      * 事前に読み込まれた解析用辞書と出力エンコーディングを保持する。
      */
     public function __construct(
-        private WordDic $wordDic,
-        private Unknown $unknown,
-        private Matrix $matrix,
+        private WordDictionary $wordDic,
+        private UnknownWordDictionary $unknown,
+        private ConnectionMatrix $matrix,
         private ?string $outputEncoding = null,
     ) {
         if (self::$bosNodes === []) {
@@ -41,14 +42,14 @@ class Tagger
     }
 
     /**
-     * 辞書ディレクトリから解析に必要な辞書を読み込む。
+     * 辞書ストレージ抽象から解析器を構築する主入口。
      */
-    public static function fromDataDir(string $dataDir, ?string $outputEncoding = null): self
+    public static function fromStorage(DictionaryStorage $storage, ?string $outputEncoding = null): self
     {
         return new self(
-            WordDic::fromDataDir($dataDir),
-            Unknown::fromDataDir($dataDir),
-            Matrix::fromDataDir($dataDir),
+            $storage->wordDictionary(),
+            $storage->unknownWordDictionary(),
+            $storage->connectionMatrix(),
             $outputEncoding,
         );
     }
@@ -197,7 +198,7 @@ class Tagger
 
             $callback->set($i);
             $this->wordDic->search($text, $i, $callback);
-            $this->unknown->search($text, $i, $this->wordDic, $callback);
+            $this->unknown->search($text, $i, $callback);
             $nodes[$i] = [];
         }
 

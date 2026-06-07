@@ -6,7 +6,8 @@ namespace IgoModern\Tests\Dictionary\Build;
 
 use IgoModern\Dictionary\Build\CategoryIdResolver;
 use IgoModern\Dictionary\Build\CharCategoryBuilder;
-use IgoModern\Dictionary\CharCategory;
+use IgoModern\Storage\Loader\FileBinaryDictionaryLoader;
+use IgoModern\Storage\Loader\FileTrieLoader;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use RuntimeException;
@@ -39,7 +40,7 @@ class CharCategoryBuilderTest extends TestCase
      */
     public function testCreateDefaultReturnsCharCategoryBuilder(): void
     {
-        $builder = CharCategoryBuilder::createDefault();
+        $builder = CharCategoryBuilder::createDefault(FileTrieLoader::forBuild());
 
         $this->assertInstanceOf(CharCategoryBuilder::class, $builder);
     }
@@ -90,7 +91,7 @@ class CharCategoryBuilderTest extends TestCase
             'SYMBOL' => 23,
         ])))->build($outputDirectory, $inputDirectory, 'UTF-8', ',');
 
-        $category = CharCategory::fromDataDir($outputDirectory);
+        $category = FileBinaryDictionaryLoader::forFileStorage($outputDirectory)->loadCharCategory();
         $default = $category->category(0x0000);
         $space = $category->category(0x0020);
         $alpha = $category->category(0x0041);

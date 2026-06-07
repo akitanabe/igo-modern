@@ -2,20 +2,31 @@
 
 declare(strict_types=1);
 
-namespace IgoModern\Binary;
+namespace IgoModern\Storage\File;
 
+use IgoModern\Binary\CharDynamicArray;
+use IgoModern\Binary\CharMemoryArray;
+use IgoModern\Binary\Contract\ByteReaderFactory;
 use IgoModern\Binary\Contract\CharArray;
 use IgoModern\Binary\Contract\CharArrayReader;
+use IgoModern\Binary\Contract\InputStream;
 use IgoModern\Binary\Contract\IntArray;
 use IgoModern\Binary\Contract\IntArrayReader;
 use IgoModern\Binary\Contract\ShortArray;
 use IgoModern\Binary\Contract\ShortArrayReader;
+use IgoModern\Binary\IntDynamicArray;
+use IgoModern\Binary\IntMemoryArray;
+use IgoModern\Binary\ShortDynamicArray;
+use IgoModern\Binary\ShortMemoryArray;
 use RuntimeException;
 
 /**
  * 辞書バイナリを現在位置から順に読み、配列実装の入力元にもなるストリーム。
+ *
+ * ファイルシステム操作と実体化方式（Lazy / Resident）の知識を Storage 内へ閉じ、辞書クラスへは
+ * InputStream 契約だけを公開する。Memory 配列の fromReader 用に *ArrayReader も実装する。
  */
-class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArrayReader
+final class FileInputStream implements InputStream, IntArrayReader, ShortArrayReader, CharArrayReader
 {
     /** @var resource バイナリ辞書を順次読むためのファイルハンドルを保持する。 */
     private $file;
@@ -26,32 +37,47 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
     /** 配列インスタンスに渡す開始位置を追跡するため、数値読み取りのカーソルを保持する。 */
     private int $cur = 0;
 
+    /** 配列インスタンスの実体化方式（Lazy / Resident）を保持する。 */
+    private ArrayMaterialization $materialization;
+
+    /** Lazy 時に dynamic 配列へ注入するファイル reader を生成するファクトリを保持する。 */
+    private ?ByteReaderFactory $byteReaderFactory;
+
     /**
-     * 開かれたファイルハンドルと配列インスタンスの読み取り方式を保持する。
+     * 開かれたファイルハンドルと配列インスタンスの実体化方式・reader ファクトリを保持する。
+     *
+     * 実体化方式の既定は Lazy。PHP 8.0 ではオブジェクト定数を既定値に置けないため null で受け取り正規化する。
+     * factory は sequential helper では不要なため null を許し、Lazy 配列生成時にガードで必須化する。
      *
      * @param resource $file
      */
     public function __construct(
         $file,
         string $fileName,
-        private bool $reduce = true,
+        ?ArrayMaterialization $materialization = null,
+        ?ByteReaderFactory $byteReaderFactory = null,
     ) {
         $this->file = $file;
         $this->fileName = $fileName;
+        $this->materialization = $materialization ?? ArrayMaterialization::Lazy();
+        $this->byteReaderFactory = $byteReaderFactory;
     }
 
     /**
      * 読み取り対象ファイルを開き、順次読み込み stream を作る。
      */
-    public static function fromFile(string $fileName, bool $reduce = true): self
-    {
+    public static function fromFile(
+        string $fileName,
+        ?ArrayMaterialization $materialization = null,
+        ?ByteReaderFactory $byteReaderFactory = null,
+    ): self {
         $file = fopen($fileName, 'rb');
 
         if ($file === false) {
             throw new RuntimeException('dictionary reading failed.');
         }
 
-        return new self($file, $fileName, $reduce);
+        return new self($file, $fileName, $materialization, $byteReaderFactory);
     }
 
     /**
@@ -77,44 +103,18 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
     }
 
     /**
-     * 設定された読み取り方式に応じて int 配列の実装を作る。
+     * 設定された実体化方式に応じて int 配列の実装を作る。
      */
     public function getIntArrayInstance(int $count): IntArray
     {
-        if ($this->reduce) {
-            $array = IntDynamicArray::fromFile($this->fileName, $this->cur);
+        if ($this->materialization === ArrayMaterialization::Lazy()) {
+            $array = new IntDynamicArray($this->requireByteReaderFactory()->open($this->fileName), $this->cur);
             $this->skipBytes($count * 4);
 
             return $array;
         }
 
         return IntMemoryArray::fromReader($this, $count);
-    }
-
-    /**
-     * ファイル全体を signed int 配列として読み込む。
-     *
-     * @return list<int>
-     */
-    public static function getIntArrayFromFile(string $fileName): array
-    {
-        $stream = self::fromFile($fileName);
-
-        try {
-            return $stream->getIntArray(intdiv($stream->size(), 4));
-        } finally {
-            $stream->close();
-        }
-    }
-
-    /**
-     * 旧実装の static helper 名で、ファイル全体を signed int 配列として読み込む。
-     *
-     * @return list<int>
-     */
-    public static function _getIntArray(string $fileName): array
-    {
-        return self::getIntArrayFromFile($fileName);
     }
 
     /**
@@ -130,12 +130,12 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
     }
 
     /**
-     * 設定された読み取り方式に応じて signed short 配列の実装を作る。
+     * 設定された実体化方式に応じて signed short 配列の実装を作る。
      */
     public function getShortArrayInstance(int $count): ShortArray
     {
-        if ($this->reduce) {
-            $array = ShortDynamicArray::fromFile($this->fileName, $this->cur);
+        if ($this->materialization === ArrayMaterialization::Lazy()) {
+            $array = new ShortDynamicArray($this->requireByteReaderFactory()->open($this->fileName), $this->cur);
             $this->skipBytes($count * 2);
 
             return $array;
@@ -145,12 +145,12 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
     }
 
     /**
-     * 設定された読み取り方式に応じて unsigned short 文字コード配列の実装を作る。
+     * 設定された実体化方式に応じて unsigned short 文字コード配列の実装を作る。
      */
     public function getCharArrayInstance(int $count): CharArray
     {
-        if ($this->reduce) {
-            $array = CharDynamicArray::fromFile($this->fileName, $this->cur);
+        if ($this->materialization === ArrayMaterialization::Lazy()) {
+            $array = new CharDynamicArray($this->requireByteReaderFactory()->open($this->fileName), $this->cur);
             $this->skipBytes($count * 2);
 
             return $array;
@@ -169,36 +169,6 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
         $this->cur += $count * 2;
 
         return $this->readUnpackedValues($count, 2, 'S');
-    }
-
-    /**
-     * UTF-16 相当の文字数として指定された件数を 2 バイト単位で読み込む。
-     */
-    public function getString(int $count): string
-    {
-        return $this->readBytes($count * 2);
-    }
-
-    /**
-     * ファイル全体を UTF-16 相当の文字列バイト列として読み込む。
-     */
-    public static function getStringFromFile(string $fileName): string
-    {
-        $stream = self::fromFile($fileName);
-
-        try {
-            return $stream->getString(intdiv($stream->size(), 2));
-        } finally {
-            $stream->close();
-        }
-    }
-
-    /**
-     * 旧実装の static helper 名で、ファイル全体を UTF-16 相当の文字列バイト列として読み込む。
-     */
-    public static function _getString(string $fileName): string
-    {
-        return self::getStringFromFile($fileName);
     }
 
     /**
@@ -225,6 +195,18 @@ class FileMappedInputStream implements IntArrayReader, ShortArrayReader, CharArr
         }
 
         return fclose($this->file);
+    }
+
+    /**
+     * Lazy 配列生成に必須の reader ファクトリを返し、未設定なら設定漏れとして失敗させる。
+     */
+    private function requireByteReaderFactory(): ByteReaderFactory
+    {
+        if ($this->byteReaderFactory === null) {
+            throw new RuntimeException('dictionary reading failed.');
+        }
+
+        return $this->byteReaderFactory;
     }
 
     /**

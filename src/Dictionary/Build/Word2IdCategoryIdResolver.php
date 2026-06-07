@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace IgoModern\Dictionary\Build;
 
-use IgoModern\Dictionary\Trie\Searcher;
+use IgoModern\Dictionary\Trie\TrieLoader;
 use RuntimeException;
 
 /**
@@ -13,6 +13,13 @@ use RuntimeException;
 class Word2IdCategoryIdResolver implements CategoryIdResolver
 {
     /**
+     * trie ファイルを復元する loader を必須依存として受け取り、Storage 具象を直接生成しない。
+     */
+    public function __construct(
+        private TrieLoader $trieLoader,
+    ) {}
+
+    /**
      * outputDirectory の word2id から "\002" prefix 付きカテゴリ名を探し、完全一致した trie ID を返す。
      */
     public function resolve(string $outputDirectory, string $encoding, string $categoryName): int
@@ -20,7 +27,7 @@ class Word2IdCategoryIdResolver implements CategoryIdResolver
         $key = $this->utf16CodeUnits("\002" . $categoryName);
         $callback = new ExactCategoryKeyCallback(count($key));
 
-        Searcher::fromFile($outputDirectory . '/word2id')->eachCommonPrefix($key, 0, $callback);
+        $this->trieLoader->load($outputDirectory . '/word2id')->eachCommonPrefix($key, 0, $callback);
 
         $id = $callback->id();
 

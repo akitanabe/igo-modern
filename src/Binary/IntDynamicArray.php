@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IgoModern\Binary;
 
+use IgoModern\Binary\Contract\ByteReader;
 use IgoModern\Binary\Contract\IntArray;
 use RuntimeException;
 
@@ -16,17 +17,9 @@ class IntDynamicArray implements IntArray
      * バイナリ辞書内の配列開始位置とページ reader を保持する。
      */
     public function __construct(
-        protected PagedBinaryReader $reader,
+        protected ByteReader $reader,
         protected int $start,
     ) {}
-
-    /**
-     * 読み取り対象ファイルを開き、指定 offset から読む dynamic 配列を作る。
-     */
-    public static function fromFile(string $fileName, int $start): self
-    {
-        return new self(PagedBinaryReader::fromFile($fileName), $start);
-    }
 
     /**
      * 指定添字に対応する 4 バイト signed int をファイルから読む。

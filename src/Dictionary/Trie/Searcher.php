@@ -7,10 +7,11 @@ namespace IgoModern\Dictionary\Trie;
 use IgoModern\Binary\Contract\CharArray;
 use IgoModern\Binary\Contract\IntArray;
 use IgoModern\Binary\Contract\ShortArray;
-use IgoModern\Binary\FileMappedInputStream;
 
 /**
- * double-array trie 辞書から入力キーに一致する共通接頭辞を探索する。
+ * double-array trie 辞書から入力キーに一致する共通接頭辞を探索する純粋クラス。
+ *
+ * ファイル形式の知識は持たない。trie ファイルからの復元は FileTrieLoader が担う。
  */
 class Searcher
 {
@@ -25,31 +26,6 @@ class Searcher
         private CharArray $chck,
         private CharArray $tail,
     ) {}
-
-    /**
-     * 辞書バイナリから double-array trie と tail 情報を復元する。
-     */
-    public static function fromFile(string $filePath): self
-    {
-        $stream = FileMappedInputStream::fromFile($filePath);
-
-        try {
-            $nodeSize = $stream->getInt();
-            $tailIndexSize = $stream->getInt();
-            $tailSize = $stream->getInt();
-
-            return new self(
-                $tailIndexSize,
-                $stream->getIntArrayInstance($tailIndexSize),
-                $stream->getIntArrayInstance($nodeSize),
-                $stream->getShortArrayInstance($tailIndexSize),
-                $stream->getCharArrayInstance($nodeSize),
-                $stream->getCharArrayInstance($tailSize),
-            );
-        } finally {
-            $stream->close();
-        }
-    }
 
     /**
      * 辞書に登録されているキー数を返す。

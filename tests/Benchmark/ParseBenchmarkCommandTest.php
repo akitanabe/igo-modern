@@ -60,11 +60,53 @@ class ParseBenchmarkCommandTest extends TestCase
         $this->assertSame('d', $definition->getOption('dictionary')->getShortcut());
         $this->assertSame('r', $definition->getOption('iterations')->getShortcut());
         $this->assertSame('w', $definition->getOption('warmup')->getShortcut());
-        $this->assertSame('s', $definition->getOption('sample')->getShortcut());
+        $this->assertNull($definition->getOption('sample')->getShortcut());
+        $this->assertSame('s', $definition->getOption('storage')->getShortcut());
         $this->assertSame('i', $definition->getOption('text')->getShortcut());
         $this->assertSame('f', $definition->getOption('file')->getShortcut());
         $this->assertSame('o', $definition->getOption('output')->getShortcut());
         $this->assertSame('m', $definition->getOption('morpheme-output')->getShortcut());
+    }
+
+    /**
+     * storage オプションを設定へ渡し、短縮 -s が sample ではなく storage を選択することを確認する。
+     */
+    public function testExecutePassesStorageOptionToRunner(): void
+    {
+        $dictionary = $this->temporaryDirectory('igo-bench-dic-');
+        $runner = new FixedParseBenchmarkRunner();
+        $command = new ParseBenchmarkCommand($runner);
+        $tester = new CommandTester($command);
+
+        $statusCode = $tester->execute([
+            '-d' => $dictionary,
+            '-s' => 'memory',
+            '--sample' => 'news',
+        ]);
+
+        $this->assertSame(0, $statusCode);
+        $this->assertNotNull($runner->lastConfig);
+        $this->assertSame('memory', $runner->lastConfig->storage);
+        $this->assertSame('news', $runner->lastConfig->sample);
+        $this->assertStringContainsString('Storage: memory', $tester->getDisplay());
+    }
+
+    /**
+     * 未対応の storage 種別は runner 実行前に CLI 入力エラーとして失敗することを確認する。
+     */
+    public function testExecuteFailsWhenStorageOptionIsUnknown(): void
+    {
+        $dictionary = $this->temporaryDirectory('igo-bench-dic-');
+        $command = new ParseBenchmarkCommand(new FixedParseBenchmarkRunner());
+        $tester = new CommandTester($command);
+
+        $statusCode = $tester->execute([
+            '--dictionary' => $dictionary,
+            '--storage' => 'sqlite',
+        ]);
+
+        $this->assertSame(1, $statusCode);
+        $this->assertSame("--storage must be file or memory.\n", $tester->getDisplay());
     }
 
     /**
@@ -100,7 +142,7 @@ class ParseBenchmarkCommandTest extends TestCase
             '-o' => $outputFile,
             '-r' => '3',
             '-w' => '0',
-            '-s' => 'mixed',
+            '--sample' => 'mixed',
         ]);
 
         $this->assertSame(0, $statusCode);
@@ -210,12 +252,15 @@ class ParseBenchmarkCommandTest extends TestCase
  */
 class FixedParseBenchmarkRunner extends ParseBenchmarkRunner
 {
+    /** 最後に受け取った config を保持し、CLI オプション変換の検証に使う。 */
+    public ?ParseBenchmarkConfig $lastConfig = null;
+
     /**
      * 親 constructor の必須 Parser factory を満たしつつ、run の固定結果だけをテスト対象にする。
      */
     public function __construct()
     {
-        parent::__construct(static function (): Parser {
+        parent::__construct(static function (string $dictionary, string $storage): Parser {
             throw new RuntimeException('FixedParseBenchmarkRunner does not create parsers.');
         });
     }
@@ -225,6 +270,8 @@ class FixedParseBenchmarkRunner extends ParseBenchmarkRunner
      */
     public function run(ParseBenchmarkConfig $config): ParseBenchmarkResult
     {
+        $this->lastConfig = $config;
+
         return new ParseBenchmarkResult(
             $config,
             "alpha\nbeta\n",

@@ -23,6 +23,7 @@ class ParseBenchmarkScriptTest extends TestCase
         $this->assertStringContainsString('-d, --dictionary', $stdout);
         $this->assertStringContainsString('--iterations', $stdout);
         $this->assertStringContainsString('--sample', $stdout);
+        $this->assertStringContainsString('-s, --storage', $stdout);
         $this->assertStringContainsString('--file', $stdout);
     }
 

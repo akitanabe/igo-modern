@@ -7,6 +7,8 @@ namespace IgoModern\Tests;
 use IgoModern\Analysis\Tagger;
 use IgoModern\Igo;
 use IgoModern\Morpheme;
+use IgoModern\Storage\FileStorage;
+use IgoModern\Storage\MemoryStorage;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -51,7 +53,7 @@ class IgoTest extends TestCase
      */
     public function testParseReturnsMorphemes(): void
     {
-        $igo = Igo::fromDictDir($this->createDictionaryDirectory(2), null);
+        $igo = Igo::fromStorage(FileStorage::fromDataDir($this->createDictionaryDirectory(2)), null);
 
         $result = $igo->parse('AB');
 
@@ -67,29 +69,41 @@ class IgoTest extends TestCase
      */
     public function testWakatiReturnsSurfaces(): void
     {
-        $igo = Igo::fromDictDir($this->createDictionaryDirectory(1), null);
+        $igo = Igo::fromStorage(FileStorage::fromDataDir($this->createDictionaryDirectory(1)), null);
 
         $this->assertSame(['A', 'B'], $igo->wakati('A B'));
     }
 
     /**
-     * tryFromDictDir が読み込み可能な辞書では Igo インスタンスを返すことを確認する。
+     * FileStorage と MemoryStorage は配列の実体化方式だけが異なり、解析結果は同一であることを確認する。
      */
-    public function testTryFromDictDirReturnsIgoWhenDictionaryCanBeLoaded(): void
+    public function testFileStorageAndMemoryStorageProduceSameResult(): void
     {
-        $igo = Igo::tryFromDictDir($this->createDictionaryDirectory(1), null);
+        $directory = $this->createDictionaryDirectory(2);
 
-        $this->assertInstanceOf(Igo::class, $igo);
+        $fileResult = Igo::fromStorage(FileStorage::fromDataDir($directory))->parse('AB');
+        $memoryResult = Igo::fromStorage(MemoryStorage::fromDataDir($directory))->parse('AB');
+
+        $this->assertEquals($fileResult, $memoryResult);
+        $this->assertSame('AB', $memoryResult[0]->surface);
+        $this->assertSame('ALPHA', $memoryResult[0]->feature);
     }
 
     /**
-     * tryFromDictDir が辞書読み込み失敗時に例外を公開 API の外へ漏らさないことを確認する。
+     * 構築入口が Storage に一本化されたため、読み込み失敗は FileStorage::fromDataDir が例外で表すことを確認する。
      */
-    public function testTryFromDictDirReturnsNullWhenDictionaryCannotBeLoaded(): void
+    public function testFileStorageThrowsWhenDictionaryCannotBeLoaded(): void
     {
-        $igo = Igo::tryFromDictDir(__DIR__ . '/missing-dictionary', null);
+        $this->expectException(RuntimeException::class);
 
-        $this->assertNull($igo);
+        // 欠損辞書では fopen が警告を出すため、警告を捨てて辞書読み込み失敗の例外だけを検証する。
+        set_error_handler(static fn(): bool => true);
+
+        try {
+            FileStorage::fromDataDir(__DIR__ . '/missing-dictionary');
+        } finally {
+            restore_error_handler();
+        }
     }
 
     /**
@@ -97,7 +111,7 @@ class IgoTest extends TestCase
      */
     public function testTryParseReturnsMorphemesWhenParsingSucceeds(): void
     {
-        $igo = Igo::fromDictDir($this->createDictionaryDirectory(2), null);
+        $igo = Igo::fromStorage(FileStorage::fromDataDir($this->createDictionaryDirectory(2)), null);
 
         $result = $igo->tryParse('AB');
 
@@ -124,7 +138,7 @@ class IgoTest extends TestCase
      */
     public function testTryWakatiReturnsSurfacesWhenParsingSucceeds(): void
     {
-        $igo = Igo::fromDictDir($this->createDictionaryDirectory(1), null);
+        $igo = Igo::fromStorage(FileStorage::fromDataDir($this->createDictionaryDirectory(1)), null);
 
         $this->assertSame(['A', 'B'], $igo->tryWakati('A B'));
     }

@@ -27,6 +27,6 @@
         "test": "phpunit",
         "format": "mago format",
         "lint": "mago lint --fix",
-        "analyze": "phpstan analyse"
+        "analyze": "phpstan analyse --memory-limit=512M"
     }
 }

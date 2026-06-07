@@ -55,11 +55,12 @@ class ParseBenchmarkCommand extends Command
             ->addOption('warmup', 'w', InputOption::VALUE_REQUIRED, 'Warmup parse iterations.', '0')
             ->addOption(
                 'sample',
-                's',
+                null,
                 InputOption::VALUE_REQUIRED,
                 'Built-in sample name: short, news, or mixed.',
                 'mixed',
             )
+            ->addOption('storage', 's', InputOption::VALUE_REQUIRED, 'Dictionary storage: file or memory.', 'file')
             ->addOption('text', 'i', InputOption::VALUE_REQUIRED, 'Inline text to benchmark.')
             ->addOption('file', 'f', InputOption::VALUE_REQUIRED, 'UTF-8 text file to benchmark.')
             ->addOption(
@@ -159,7 +160,22 @@ class ParseBenchmarkCommand extends Command
             $this->stringOption($input, 'sample') ?? 'mixed',
             $this->stringOption($input, 'text'),
             $this->stringOption($input, 'file'),
+            $this->storageOption($input),
         );
+    }
+
+    /**
+     * file と memory の storage 種別だけを受け入れ、辞書ロード方式の誤指定を早期に検出する。
+     */
+    private function storageOption(InputInterface $input): string
+    {
+        $storage = $this->stringOption($input, 'storage') ?? 'file';
+
+        if (!in_array($storage, ['file', 'memory'], true)) {
+            throw new InvalidArgumentException('--storage must be file or memory.');
+        }
+
+        return $storage;
     }
 
     /**
@@ -231,6 +247,7 @@ class ParseBenchmarkCommand extends Command
 
         return (
             sprintf("Dictionary: %s\n", $result->config->dictionary)
+            . sprintf("Storage: %s\n", $result->config->storage)
             . sprintf(
                 "Sample: %s (%d chars, %d morphemes)\n",
                 $result->config->sampleLabel(),

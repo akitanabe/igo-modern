@@ -2,21 +2,23 @@
 
 declare(strict_types=1);
 
-namespace IgoModern\Tests\Binary;
+namespace IgoModern\Tests\Storage\File;
 
 use IgoModern\Binary\CharDynamicArray;
 use IgoModern\Binary\CharMemoryArray;
-use IgoModern\Binary\FileMappedInputStream;
 use IgoModern\Binary\IntDynamicArray;
 use IgoModern\Binary\IntMemoryArray;
 use IgoModern\Binary\ShortDynamicArray;
 use IgoModern\Binary\ShortMemoryArray;
+use IgoModern\Storage\File\ArrayMaterialization;
+use IgoModern\Storage\File\FileInputStream;
+use IgoModern\Tests\Support\RecordingByteReaderFactory;
 use PHPUnit\Framework\TestCase;
 
 /**
- * 辞書バイナリを順次読み込む FileMappedInputStream の挙動を検証するテスト。
+ * 辞書バイナリを順次読み込む FileInputStream の挙動を検証するテスト。
  */
-class FileMappedInputStreamTest extends TestCase
+class FileInputStreamTest extends TestCase
 {
     /** @var list<string> テスト中に作成した一時ファイルの削除対象を保持する。 */
     private array $temporaryFiles = [];
@@ -40,7 +42,7 @@ class FileMappedInputStreamTest extends TestCase
      */
     public function testReadsIntValuesSequentially(): void
     {
-        $stream = FileMappedInputStream::fromFile($this->createBinaryFile($this->packValues('l', [10, -20, 30])));
+        $stream = FileInputStream::fromFile($this->createBinaryFile($this->packValues('l', [10, -20, 30])));
 
         $this->assertSame(10, $stream->getInt());
         $this->assertSame([-20, 30], $stream->getIntArray(2));
@@ -48,42 +50,27 @@ class FileMappedInputStreamTest extends TestCase
     }
 
     /**
-     * getShortArray と getCharArray が signed/unsigned short を区別して読むことを確認する。
+     * size が読み取り対象ファイルのバイトサイズを返すことを確認する。
      */
-    public function testReadsShortAndCharValuesSequentially(): void
+    public function testSizeReturnsByteLengthOfFile(): void
     {
-        $stream = FileMappedInputStream::fromFile($this->createBinaryFile(
-            $this->packValues('s', [-1, 200]) . $this->packValues('S', [65, 65_535]),
-        ));
+        $stream = FileInputStream::fromFile($this->createBinaryFile($this->packValues('l', [1, 2, 3])));
 
-        $this->assertSame([-1, 200], $stream->getShortArray(2));
-        $this->assertSame([65, 65_535], $stream->getCharArray(2));
+        $this->assertSame(12, $stream->size());
         $this->assertTrue($stream->close());
     }
 
     /**
-     * getString が旧実装と同じくバイト数ではなく文字数に 2 を掛けた長さを読むことを確認する。
+     * Resident 実体化時は配列インスタンスがストリームから値を読み込んで保持することを確認する。
      */
-    public function testGetStringReadsTwoBytesPerCountWithoutAdvancingNumericCursor(): void
+    public function testArrayInstancesReadIntoMemoryWhenResident(): void
     {
-        $stream = FileMappedInputStream::fromFile($this->createBinaryFile('abcd' . $this->packValues('l', [99])));
-
-        $this->assertSame('abcd', $stream->getString(2));
-        $this->assertSame(99, $stream->getInt());
-        $this->assertTrue($stream->close());
-    }
-
-    /**
-     * reduce 無効時は配列インスタンスがストリームから値を読み込んで保持することを確認する。
-     */
-    public function testArrayInstancesReadIntoMemoryWhenReduceIsDisabled(): void
-    {
-        $stream = FileMappedInputStream::fromFile(
+        $stream = FileInputStream::fromFile(
             $this->createBinaryFile(
                 $this->packValues('l', [10, -20]) . $this->packValues('s', [30, -40])
                     . $this->packValues('S', [50, 60]),
             ),
-            false,
+            ArrayMaterialization::Resident(),
         );
 
         $ints = $stream->getIntArrayInstance(2);
@@ -100,14 +87,15 @@ class FileMappedInputStreamTest extends TestCase
     }
 
     /**
-     * reduce 有効時は配列インスタンスが開始オフセットを使って必要な値だけ読むことを確認する。
+     * Lazy 実体化時は配列インスタンスが注入された factory の reader を使い、開始オフセットから必要な値だけ読むことを確認する。
      */
-    public function testArrayInstancesReadDynamicallyWhenReduceIsEnabled(): void
+    public function testArrayInstancesReadDynamicallyWhenLazy(): void
     {
         $fileName = $this->createBinaryFile(
             $this->packValues('l', [10, -20]) . $this->packValues('s', [30, -40]) . $this->packValues('S', [50, 60]),
         );
-        $stream = FileMappedInputStream::fromFile($fileName, true);
+        $factory = new RecordingByteReaderFactory();
+        $stream = FileInputStream::fromFile($fileName, ArrayMaterialization::Lazy(), $factory);
 
         $ints = $stream->getIntArrayInstance(2);
         $shorts = $stream->getShortArrayInstance(2);
@@ -120,26 +108,28 @@ class FileMappedInputStreamTest extends TestCase
         $this->assertInstanceOf(CharDynamicArray::class, $chars);
         $this->assertSame(60, $chars->get(1));
         $this->assertTrue($stream->close());
+        // Lazy では各 instance 生成ごとに factory->open($fileName) が呼ばれ、reader が注入されることを検証する。
+        $this->assertSame([$fileName, $fileName, $fileName], $factory->openedFiles);
     }
 
     /**
-     * static helper がファイル全体を int 配列として読み切ることを確認する。
+     * Lazy 実体化なのに factory 未注入で配列を生成しようとすると設定漏れとして失敗することを確認する。
      */
-    public function testGetIntArrayFromFileReadsWholeFile(): void
+    public function testArrayInstanceCreationFailsWhenFactoryMissingOnLazy(): void
     {
-        $fileName = $this->createBinaryFile($this->packValues('l', [7, -8, 9]));
+        $stream = FileInputStream::fromFile(
+            $this->createBinaryFile($this->packValues('l', [10, -20])),
+            ArrayMaterialization::Lazy(),
+        );
 
-        $this->assertSame([7, -8, 9], FileMappedInputStream::getIntArrayFromFile($fileName));
-    }
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('dictionary reading failed.');
 
-    /**
-     * static helper がファイル全体を UTF-16 相当のバイト列として読み切ることを確認する。
-     */
-    public function testGetStringFromFileReadsWholeFileAsTwoByteUnits(): void
-    {
-        $fileName = $this->createBinaryFile('abcdef');
-
-        $this->assertSame('abcdef', FileMappedInputStream::getStringFromFile($fileName));
+        try {
+            $stream->getIntArrayInstance(2);
+        } finally {
+            $stream->close();
+        }
     }
 
     /**
@@ -147,7 +137,7 @@ class FileMappedInputStreamTest extends TestCase
      */
     private function createBinaryFile(string $contents): string
     {
-        $fileName = tempnam(sys_get_temp_dir(), 'igo-fmis-');
+        $fileName = tempnam(sys_get_temp_dir(), 'igo-fis-');
         $this->assertIsString($fileName);
         $this->temporaryFiles[] = $fileName;
 

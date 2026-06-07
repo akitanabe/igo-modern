@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace IgoModern;
 
 use IgoModern\Analysis\Tagger;
+use IgoModern\Storage\DictionaryStorage;
 use Throwable;
 
 /**
@@ -20,23 +21,11 @@ class Igo implements Parser
     ) {}
 
     /**
-     * 辞書ディレクトリと出力エンコーディングから公開 API を構築する。
+     * 辞書ストレージ抽象から公開 API を構築する正式な拡張点。
      */
-    public static function fromDictDir(string $dictDir, ?string $outputEncoding = null): self
+    public static function fromStorage(DictionaryStorage $storage, ?string $outputEncoding = null): self
     {
-        return new self(Tagger::fromDataDir($dictDir, $outputEncoding));
-    }
-
-    /**
-     * 辞書読み込みに失敗しても例外を投げず、公開 API の利用可否を null で表す。
-     */
-    public static function tryFromDictDir(string $dictDir, ?string $outputEncoding = null): ?self
-    {
-        try {
-            return self::fromDictDir($dictDir, $outputEncoding);
-        } catch (Throwable) {
-            return null;
-        }
+        return new self(Tagger::fromStorage($storage, $outputEncoding));
     }
 
     /**

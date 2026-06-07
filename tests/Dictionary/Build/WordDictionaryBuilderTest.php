@@ -7,13 +7,14 @@ namespace IgoModern\Tests\Dictionary\Build;
 use IgoModern\Analysis\ViterbiNode;
 use IgoModern\Dictionary\Build\Word2IdCategoryIdResolver;
 use IgoModern\Dictionary\Build\WordDictionaryBuilder;
-use IgoModern\Dictionary\WordDic;
 use IgoModern\Dictionary\WordDicCallback;
+use IgoModern\Storage\Loader\FileBinaryDictionaryLoader;
+use IgoModern\Storage\Loader\FileTrieLoader;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 /**
- * WordDictionaryBuilder が MeCab 互換定義から runtime WordDic 互換の単語辞書を生成することを検証するテスト。
+ * WordDictionaryBuilder が MeCab 互換定義から runtime BinaryWordDictionary 互換の単語辞書を生成することを検証するテスト。
  */
 class WordDictionaryBuilderTest extends TestCase
 {
@@ -51,7 +52,7 @@ class WordDictionaryBuilderTest extends TestCase
     /**
      * unk.def と CSV から生成した単語辞書を WordDic が通常語・未知語カテゴリとして読めることを確認する。
      */
-    public function testBuildWritesWordDictionaryFilesReadableByRuntimeWordDic(): void
+    public function testBuildWritesWordDictionaryFilesReadableByRuntimeBinaryWordDictionary(): void
     {
         $inputDirectory = $this->createTemporaryDirectory('igo-word-in-');
         $outputDirectory = $this->createTemporaryDirectory('igo-word-out-');
@@ -67,13 +68,17 @@ class WordDictionaryBuilderTest extends TestCase
 
         (new WordDictionaryBuilder())->build($outputDirectory, $inputDirectory, 'UTF-8', ',');
 
-        $wordDic = WordDic::fromDataDir($outputDirectory);
+        $wordDic = FileBinaryDictionaryLoader::forFileStorage($outputDirectory)->loadWordDictionary();
         $normalCallback = new CapturingBuiltWordCallback();
         $wordDic->search($this->utf16CodeUnits('猫語です'), 0, $normalCallback);
 
-        $spaceTrieId = (new Word2IdCategoryIdResolver())->resolve($outputDirectory, 'UTF-8', 'SPACE');
+        $spaceTrieId = (new Word2IdCategoryIdResolver(FileTrieLoader::forBuild()))->resolve(
+            $outputDirectory,
+            'UTF-8',
+            'SPACE',
+        );
         $unknownCallback = new CapturingBuiltWordCallback();
-        $wordDic->searchFromTrieId($spaceTrieId, 4, 2, true, $unknownCallback);
+        $wordDic->callWordRange($spaceTrieId, 4, 2, true, $unknownCallback);
 
         $this->assertSame(
             [

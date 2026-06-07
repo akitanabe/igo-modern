@@ -6,13 +6,12 @@ namespace IgoModern\Tests\Dictionary\Build;
 
 use IgoModern\Analysis\ViterbiNode;
 use IgoModern\Dictionary\Build\DictionaryBuilder;
-use IgoModern\Dictionary\CharCategory;
-use IgoModern\Dictionary\Matrix;
 use IgoModern\Dictionary\Trie\CommonPrefixCallback;
-use IgoModern\Dictionary\Trie\Searcher;
-use IgoModern\Dictionary\WordDic;
 use IgoModern\Dictionary\WordDicCallback;
 use IgoModern\Igo;
+use IgoModern\Storage\FileStorage;
+use IgoModern\Storage\Loader\FileBinaryDictionaryLoader;
+use IgoModern\Storage\Loader\FileTrieLoader;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -64,9 +63,9 @@ class DictionaryBuilderIntegrationTest extends TestCase
         $outputDirectory = $this->createTemporaryDirectory('igo-build-output-');
         $this->writeFixture($inputDirectory);
 
-        DictionaryBuilder::standard()->build($outputDirectory, $inputDirectory, 'UTF-8');
+        DictionaryBuilder::standard(FileTrieLoader::forBuild())->build($outputDirectory, $inputDirectory, 'UTF-8');
 
-        $result = Igo::fromDictDir($outputDirectory, 'UTF-8')->parse('猫AB');
+        $result = Igo::fromStorage(FileStorage::fromDataDir($outputDirectory), 'UTF-8')->parse('猫AB');
 
         $this->assertCount(2, $result);
         $this->assertSame('猫', $result[0]->surface);
@@ -86,22 +85,22 @@ class DictionaryBuilderIntegrationTest extends TestCase
         $outputDirectory = $this->createTemporaryDirectory('igo-build-output-');
         $this->writeFixture($inputDirectory);
 
-        DictionaryBuilder::standard()->build($outputDirectory, $inputDirectory, 'UTF-8');
+        DictionaryBuilder::standard(FileTrieLoader::forBuild())->build($outputDirectory, $inputDirectory, 'UTF-8');
 
         $this->assertDictionaryFilesExist($outputDirectory);
 
+        $loader = FileBinaryDictionaryLoader::forFileStorage($outputDirectory);
+
         $wordCallback = new CapturingIntegrationWordCallback();
-        WordDic::fromDataDir($outputDirectory)->search($this->utf16CodeUnits('猫AB'), 0, $wordCallback);
+        $loader->loadWordDictionary()->search($this->utf16CodeUnits('猫AB'), 0, $wordCallback);
 
         $prefixCallback = new CapturingIntegrationPrefixCallback();
-        Searcher::fromFile($outputDirectory . '/word2id')->eachCommonPrefix(
-            $this->utf16CodeUnits("\002ALPHA"),
-            0,
-            $prefixCallback,
-        );
+        FileTrieLoader::forBuild()
+            ->load($outputDirectory . '/word2id')
+            ->eachCommonPrefix($this->utf16CodeUnits("\002ALPHA"), 0, $prefixCallback);
 
-        $matrix = Matrix::fromDataDir($outputDirectory);
-        $category = CharCategory::fromDataDir($outputDirectory);
+        $matrix = $loader->loadConnectionMatrix();
+        $category = $loader->loadCharCategory();
 
         $this->assertSame([[3, 0, 1, -100, 0, 0, false]], $wordCallback->nodeSummaries());
         $this->assertSame([['start' => 0, 'offset' => 6]], $prefixCallback->ranges());

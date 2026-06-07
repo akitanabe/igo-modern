@@ -13,6 +13,8 @@ use IgoModern\Binary\IntDynamicArray;
 use IgoModern\Binary\IntMemoryArray;
 use IgoModern\Binary\ShortDynamicArray;
 use IgoModern\Binary\ShortMemoryArray;
+use IgoModern\Storage\File\PagedByteReaderFactory;
+use IgoModern\Tests\Support\RecordingByteReader;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
 use SplFixedArray;
@@ -69,7 +71,7 @@ class ArrayTest extends TestCase
     public function testIntDynamicArrayReturnsValuesLoadedFromFileOffset(): void
     {
         $fileName = $this->createBinaryFile('xx' . $this->packValues('l', [10, -20, 30]));
-        $array = IntDynamicArray::fromFile($fileName, 2);
+        $array = new IntDynamicArray((new PagedByteReaderFactory())->open($fileName), 2);
 
         $this->assertSame(10, $array->get(0));
         $this->assertSame(-20, $array->get(1));
@@ -94,7 +96,7 @@ class ArrayTest extends TestCase
     public function testShortDynamicArrayReturnsValuesLoadedFromFileOffset(): void
     {
         $fileName = $this->createBinaryFile('x' . $this->packValues('s', [100, -200, 300]));
-        $array = ShortDynamicArray::fromFile($fileName, 1);
+        $array = new ShortDynamicArray((new PagedByteReaderFactory())->open($fileName), 1);
 
         $this->assertSame(100, $array->get(0));
         $this->assertSame(-200, $array->get(1));
@@ -119,11 +121,56 @@ class ArrayTest extends TestCase
     public function testCharDynamicArrayReturnsValuesLoadedFromFileOffset(): void
     {
         $fileName = $this->createBinaryFile('x' . $this->packValues('S', [65, 40_000, 65_535]));
-        $array = CharDynamicArray::fromFile($fileName, 1);
+        $array = new CharDynamicArray((new PagedByteReaderFactory())->open($fileName), 1);
 
         $this->assertSame(65, $array->get(0));
         $this->assertSame(40_000, $array->get(1));
         $this->assertSame(65_535, $array->get(2));
+    }
+
+    /**
+     * IntDynamicArray が具象 reader ではなく ByteReader 契約に依存し、正しい offset / length を要求することを確認する。
+     */
+    public function testIntDynamicArrayDependsOnByteReaderContract(): void
+    {
+        $reader = new RecordingByteReader($this->packValues('l', [10, -20, 30]));
+        $array = new IntDynamicArray($reader, 0);
+
+        $this->assertSame(10, $array->get(0));
+        $this->assertSame(-20, $array->get(1));
+        $this->assertSame(30, $array->get(2));
+        // 4 バイト幅 × 添字で byte offset / byte length が算出されることを検証する。
+        $this->assertSame([[0, 4], [4, 4], [8, 4]], $reader->calls);
+    }
+
+    /**
+     * ShortDynamicArray が ByteReader 契約から 2 バイト signed short を読むことを確認する。
+     */
+    public function testShortDynamicArrayDependsOnByteReaderContract(): void
+    {
+        $reader = new RecordingByteReader($this->packValues('s', [100, -200, 300]));
+        $array = new ShortDynamicArray($reader, 0);
+
+        $this->assertSame(100, $array->get(0));
+        $this->assertSame(-200, $array->get(1));
+        $this->assertSame(300, $array->get(2));
+        // 2 バイト幅 × 添字で byte offset / byte length が算出されることを検証する。
+        $this->assertSame([[0, 2], [2, 2], [4, 2]], $reader->calls);
+    }
+
+    /**
+     * CharDynamicArray が ByteReader 契約から 2 バイト unsigned short を読むことを確認する。
+     */
+    public function testCharDynamicArrayDependsOnByteReaderContract(): void
+    {
+        $reader = new RecordingByteReader($this->packValues('S', [65, 40_000, 65_535]));
+        $array = new CharDynamicArray($reader, 0);
+
+        $this->assertSame(65, $array->get(0));
+        $this->assertSame(40_000, $array->get(1));
+        $this->assertSame(65_535, $array->get(2));
+        // 2 バイト幅 × 添字で byte offset / byte length が算出されることを検証する。
+        $this->assertSame([[0, 2], [2, 2], [4, 2]], $reader->calls);
     }
 
     /**
