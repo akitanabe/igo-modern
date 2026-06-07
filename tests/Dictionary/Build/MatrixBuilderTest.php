@@ -23,7 +23,7 @@ class MatrixBuilderTest extends TestCase
     protected function tearDown(): void
     {
         foreach (array_reverse($this->temporaryDirectories) as $directory) {
-            foreach (['matrix.def', 'matrix.bin'] as $fileName) {
+            foreach (['matrix.def', 'matrix.bin', 'matrix.bin.tmp'] as $fileName) {
                 $path = $directory . '/' . $fileName;
 
                 if (is_file($path)) {
@@ -84,6 +84,87 @@ class MatrixBuilderTest extends TestCase
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('matrix.def line 2 has unexpected context ids.');
+
+        (new MatrixBuilder())->build($outputDirectory, $inputDirectory, 'UTF-8', ',');
+    }
+
+    /**
+     * 出力 matrix.bin がヘッダ 8 バイト + エントリ数 × 2 バイトちょうどで、余計なバイトを残さないことを確認する。
+     */
+    public function testBuildWritesExactlySizedBinary(): void
+    {
+        $inputDirectory = $this->createTemporaryDirectory('igo-matrix-in-');
+        $outputDirectory = $this->createTemporaryDirectory('igo-matrix-out-');
+        $this->writeTextFile($inputDirectory . '/matrix.def', "3 2\n0 0 10\n0 1 -5\n1 0 20\n1 1 -6\n2 0 30\n2 1 -7\n");
+
+        (new MatrixBuilder())->build($outputDirectory, $inputDirectory, 'UTF-8', ',');
+
+        // ヘッダ 4+4 バイトに leftSize*rightSize=6 エントリ分の short(2 バイト) が続く。
+        $this->assertSame(8 + (3 * 2 * 2), filesize($outputDirectory . '/matrix.bin'));
+    }
+
+    /**
+     * matrix.def を生バイナリとして読み戻し、left-major 定義が right-major 配列へ正しく転置されることを確認する。
+     */
+    public function testBuildTransposesCostsIntoRightMajorOrder(): void
+    {
+        $inputDirectory = $this->createTemporaryDirectory('igo-matrix-in-');
+        $outputDirectory = $this->createTemporaryDirectory('igo-matrix-out-');
+        $this->writeTextFile($inputDirectory . '/matrix.def', "3 2\n0 0 10\n0 1 -5\n1 0 20\n1 1 -6\n2 0 30\n2 1 -7\n");
+
+        (new MatrixBuilder())->build($outputDirectory, $inputDirectory, 'UTF-8', ',');
+
+        // ヘッダ 8 バイトを読み飛ばし、index=(rightId*leftSize)+leftId 順に並ぶ short 列を直接検証する。
+        $binary = (string) file_get_contents($outputDirectory . '/matrix.bin');
+        /** @var array<int, int> $shorts */
+        $shorts = array_values((array) unpack('lleft/lright/s6costs', $binary));
+        $this->assertSame([3, 2, 10, 20, 30, -5, -6, -7], $shorts);
+    }
+
+    /**
+     * 定義行がヘッダのエントリ数を超える場合は、余剰行を parse する前に entry count 不一致として扱うことを確認する。
+     */
+    public function testBuildFailsWhenEntryCountExceedsHeader(): void
+    {
+        $inputDirectory = $this->createTemporaryDirectory('igo-matrix-in-');
+        $outputDirectory = $this->createTemporaryDirectory('igo-matrix-out-');
+        // 2x2=4 エントリの宣言に対し 5 行目を余分に与える。
+        $this->writeTextFile($inputDirectory . '/matrix.def', "2 2\n0 0 10\n0 1 -5\n1 0 20\n1 1 -6\n2 0 99\n");
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('matrix.def entry count does not match header sizes.');
+
+        (new MatrixBuilder())->build($outputDirectory, $inputDirectory, 'UTF-8', ',');
+    }
+
+    /**
+     * 定義行がヘッダのエントリ数に満たない場合も entry count 不一致として扱うことを確認する。
+     */
+    public function testBuildFailsWhenEntryCountIsShortOfHeader(): void
+    {
+        $inputDirectory = $this->createTemporaryDirectory('igo-matrix-in-');
+        $outputDirectory = $this->createTemporaryDirectory('igo-matrix-out-');
+        // 2x2=4 エントリの宣言に対し 3 行しか与えない。
+        $this->writeTextFile($inputDirectory . '/matrix.def', "2 2\n0 0 10\n0 1 -5\n1 0 20\n");
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('matrix.def entry count does not match header sizes.');
+
+        (new MatrixBuilder())->build($outputDirectory, $inputDirectory, 'UTF-8', ',');
+    }
+
+    /**
+     * 空行が混在しても、エラーは詰め直した連番ではなく元ファイルの物理行番号で報告されることを確認する。
+     */
+    public function testBuildReportsPhysicalLineNumberWhenBlankLinesPresent(): void
+    {
+        $inputDirectory = $this->createTemporaryDirectory('igo-matrix-in-');
+        $outputDirectory = $this->createTemporaryDirectory('igo-matrix-out-');
+        // 4 行目に空行を挟むため、順序違反の物理行番号は 6 になる。
+        $this->writeTextFile($inputDirectory . '/matrix.def', "2 2\n0 0 10\n0 1 -5\n\n1 1 -6\n1 0 20\n");
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('matrix.def line 5 has unexpected context ids.');
 
         (new MatrixBuilder())->build($outputDirectory, $inputDirectory, 'UTF-8', ',');
     }
