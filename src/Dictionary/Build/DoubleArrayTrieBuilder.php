@@ -77,7 +77,7 @@ class DoubleArrayTrieBuilder
 
             $node = $root;
 
-            foreach ($this->utf16CodeUnits($key) as $code) {
+            foreach ($this->utf16CodeUnits((string) $key) as $code) {
                 if (!isset($node->children[$code])) {
                     $node->children[$code] = new TrieBuildNode();
                 }
