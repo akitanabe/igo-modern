@@ -2,19 +2,22 @@
 
 declare(strict_types=1);
 
-namespace IgoModern\Tests\Dictionary\Trie;
+namespace IgoModern\Tests\Storage;
 
 use IgoModern\Binary\CharDynamicArray;
+use IgoModern\Binary\CharMemoryArray;
 use IgoModern\Dictionary\Trie\CommonPrefixCallback;
 use IgoModern\Dictionary\Trie\Searcher;
+use IgoModern\Storage\FileInputStreamFactory;
 use IgoModern\Storage\FileTrieLoader;
+use IgoModern\Storage\PagedByteReaderFactory;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
 
 /**
- * Searcher が double-array trie 辞書から共通接頭辞を列挙する挙動を検証するテスト。
+ * FileTrieLoader が trie ファイルから Searcher を復元し、実体化方式を引き継ぐことを検証するテスト。
  */
-class SearcherTest extends TestCase
+class FileTrieLoaderTest extends TestCase
 {
     /** @var list<string> テスト中に作成した一時ファイルの削除対象を保持する。 */
     private array $temporaryFiles = [];
@@ -34,24 +37,25 @@ class SearcherTest extends TestCase
     }
 
     /**
-     * size が辞書に格納されたキー数を返し、ID が double-array trie の負数 ID を復元することを確認する。
+     * forBuild() が trie ファイルから Searcher を復元し、keySetSize を正しく返すことを確認する。
      */
-    public function testSizeAndIdFollowDictionaryEncoding(): void
+    public function testForBuildLoadsTrieFileIntoSearcher(): void
     {
-        $searcher = FileTrieLoader::forBuild()->load($this->createDictionaryFile());
+        $fileName = $this->createDictionaryFile();
+        $searcher = FileTrieLoader::forBuild()->load($fileName);
 
+        $this->assertInstanceOf(Searcher::class, $searcher);
         $this->assertSame(2, $searcher->size());
-        $this->assertSame(0, Searcher::ID(-1));
-        $this->assertSame(1, Searcher::ID(-2));
     }
 
     /**
-     * eachCommonPrefix が通常の終端ノードと tail 圧縮ノードの一致を短い順に通知することを確認する。
+     * forBuild() が復元した Searcher が共通接頭辞を短い順に通知できることを確認する。
      */
-    public function testEachCommonPrefixCallsCallbackForTerminalAndTailMatches(): void
+    public function testForBuildSearcherFindsCommonPrefixes(): void
     {
-        $searcher = FileTrieLoader::forBuild()->load($this->createDictionaryFile());
-        $callback = new CapturingCommonPrefixCallback();
+        $fileName = $this->createDictionaryFile();
+        $searcher = FileTrieLoader::forBuild()->load($fileName);
+        $callback = new CapturingFileTrieCallback();
 
         $searcher->eachCommonPrefix([10, 20, 30, 99], 0, $callback);
 
@@ -65,31 +69,27 @@ class SearcherTest extends TestCase
     }
 
     /**
-     * eachCommonPrefix が指定開始位置から読み取り、そこに一致がなければ通知しないことを確認する。
+     * constructor に独自 InputStreamFactory を注入して load() できることを確認する。
      */
-    public function testEachCommonPrefixUsesStartOffsetAndSkipsMissingPrefix(): void
+    public function testConstructorAcceptsCustomInputStreamFactory(): void
     {
-        $searcher = FileTrieLoader::forBuild()->load($this->createDictionaryFile());
-        $callback = new CapturingCommonPrefixCallback();
+        $factory = FileInputStreamFactory::lazy(new PagedByteReaderFactory());
+        $fileName = $this->createDictionaryFile();
+        $loader = new FileTrieLoader($factory);
 
-        $searcher->eachCommonPrefix([99, 10, 20, 30], 1, $callback);
-        $searcher->eachCommonPrefix([9, 88], 0, $callback);
+        $searcher = $loader->load($fileName);
 
-        $this->assertSame(
-            [
-                ['start' => 1, 'offset' => 1, 'id' => 0],
-                ['start' => 1, 'offset' => 3, 'id' => 1],
-            ],
-            $callback->matches,
-        );
+        $this->assertInstanceOf(Searcher::class, $searcher);
+        $this->assertSame(2, $searcher->size());
     }
 
     /**
-     * Searcher が tail を PHP 配列へ展開せず dynamic reader として保持することを確認する。
+     * Lazy stream（forBuild 相当）で復元した Searcher の内部配列が DynamicArray であることを確認する。
      */
-    public function testTailIsReadDynamically(): void
+    public function testForBuildProducesLazyInternalArrays(): void
     {
-        $searcher = FileTrieLoader::forBuild()->load($this->createDictionaryFile());
+        $fileName = $this->createDictionaryFile();
+        $searcher = FileTrieLoader::forBuild()->load($fileName);
         $tailProperty = new ReflectionProperty(Searcher::class, 'tail');
         $tailProperty->setAccessible(true);
 
@@ -97,7 +97,21 @@ class SearcherTest extends TestCase
     }
 
     /**
-     * 2 語だけを含む小さな double-array trie 辞書をバイナリ形式で作成する。
+     * Resident stream を注入した FileTrieLoader が MemoryArray を持つ Searcher を復元することを確認する。
+     */
+    public function testResidentStreamProducesResidentInternalArrays(): void
+    {
+        $factory = FileInputStreamFactory::resident(new PagedByteReaderFactory());
+        $fileName = $this->createDictionaryFile();
+        $searcher = (new FileTrieLoader($factory))->load($fileName);
+        $tailProperty = new ReflectionProperty(Searcher::class, 'tail');
+        $tailProperty->setAccessible(true);
+
+        $this->assertInstanceOf(CharMemoryArray::class, $tailProperty->getValue($searcher));
+    }
+
+    /**
+     * SearcherTest と同じバイナリ形式の 2 語 double-array trie ファイルを作成する。
      */
     private function createDictionaryFile(): string
     {
@@ -134,7 +148,7 @@ class SearcherTest extends TestCase
      */
     private function createBinaryFile(string $contents): string
     {
-        $fileName = tempnam(sys_get_temp_dir(), 'igo-searcher-');
+        $fileName = tempnam(sys_get_temp_dir(), 'igo-trie-loader-');
         $this->assertIsString($fileName);
         $this->temporaryFiles[] = $fileName;
 
@@ -162,9 +176,9 @@ class SearcherTest extends TestCase
 }
 
 /**
- * Searcher から通知された一致結果をテスト検証用に蓄積する。
+ * FileTrieLoader テストで Searcher から通知された一致結果を蓄積する。
  */
-class CapturingCommonPrefixCallback implements CommonPrefixCallback
+class CapturingFileTrieCallback implements CommonPrefixCallback
 {
     /** @var list<array{start:int, offset:int, id:int}> 通知された一致結果を順序付きで保持する。 */
     public array $matches = [];

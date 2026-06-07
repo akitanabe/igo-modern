@@ -11,6 +11,7 @@ use IgoModern\Dictionary\Build\DictionaryBuilder;
 use IgoModern\Dictionary\WordDicCallback;
 use IgoModern\Storage\FileBinaryDictionaryLoader;
 use IgoModern\Storage\FileInputStreamFactory;
+use IgoModern\Storage\FileTrieLoader;
 use IgoModern\Tests\Support\RecordingByteReaderFactory;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
@@ -151,7 +152,7 @@ class BinaryDictionaryLoaderTest extends TestCase
         $this->writeTextFile($inputDirectory . '/noun.csv', "猫,0,0,-100,NOUN\n");
         $this->writeTextFile($inputDirectory . '/matrix.def', "1 1\n0 0 0\n");
 
-        DictionaryBuilder::standard()->build($outputDirectory, $inputDirectory, 'UTF-8');
+        DictionaryBuilder::standard(FileTrieLoader::forBuild())->build($outputDirectory, $inputDirectory, 'UTF-8');
 
         return $outputDirectory;
     }

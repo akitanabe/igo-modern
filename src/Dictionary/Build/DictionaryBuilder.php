@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace IgoModern\Dictionary\Build;
 
+use IgoModern\Dictionary\Trie\TrieLoader;
+
 /**
  * Igo 形式辞書の生成順序を制御し、個別 builder へ同じ入力条件を伝播する。
  */
@@ -21,9 +23,13 @@ class DictionaryBuilder
     /**
      * CLI から利用する標準の辞書生成構成を組み立てる。
      */
-    public static function standard(): self
+    public static function standard(TrieLoader $trieLoader): self
     {
-        return new self(new WordDictionaryBuilder(), new MatrixBuilder(), CharCategoryBuilder::createDefault());
+        return new self(
+            new WordDictionaryBuilder(),
+            new MatrixBuilder(),
+            CharCategoryBuilder::createDefault($trieLoader),
+        );
     }
 
     /**

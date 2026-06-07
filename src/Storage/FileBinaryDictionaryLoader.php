@@ -12,7 +12,6 @@ use IgoModern\Dictionary\Binary\BinaryUnknownWordDictionary;
 use IgoModern\Dictionary\Binary\BinaryWordDictionary;
 use IgoModern\Dictionary\Category;
 use IgoModern\Dictionary\CharCategory;
-use IgoModern\Dictionary\Trie\Searcher;
 use IgoModern\Dictionary\WordDataReader;
 
 /**
@@ -67,7 +66,7 @@ final class FileBinaryDictionaryLoader implements BinaryDictionaryLoader
             $wordCount = intdiv($stream->size(), 4 + 2 + 2 + 2);
 
             return new BinaryWordDictionary(
-                Searcher::fromFile($this->dataDir . '/word2id', $this->streams),
+                (new FileTrieLoader($this->streams))->load($this->dataDir . '/word2id'),
                 new WordDataReader($this->byteReaderFactory->open($this->dataDir . '/word.dat')),
                 $this->readWordIndices(),
                 $stream->getIntArrayInstance($wordCount),

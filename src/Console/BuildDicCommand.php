@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace IgoModern\Console;
 
 use IgoModern\Dictionary\Build\DictionaryBuilder;
+use IgoModern\Storage\FileTrieLoader;
 use RuntimeException;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -39,7 +40,7 @@ class BuildDicCommand extends Command
      */
     public static function createDefault(): self
     {
-        return new self(static fn(): DictionaryBuilder => DictionaryBuilder::standard());
+        return new self(static fn(): DictionaryBuilder => DictionaryBuilder::standard(FileTrieLoader::forBuild()));
     }
 
     /**

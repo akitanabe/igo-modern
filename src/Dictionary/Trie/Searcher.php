@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace IgoModern\Dictionary\Trie;
 
 use IgoModern\Binary\Contract\CharArray;
-use IgoModern\Binary\Contract\InputStreamFactory;
 use IgoModern\Binary\Contract\IntArray;
 use IgoModern\Binary\Contract\ShortArray;
 
 /**
- * double-array trie 辞書から入力キーに一致する共通接頭辞を探索する。
+ * double-array trie 辞書から入力キーに一致する共通接頭辞を探索する純粋クラス。
+ *
+ * ファイル形式の知識は持たない。trie ファイルからの復元は FileTrieLoader が担う。
  */
 class Searcher
 {
@@ -25,35 +26,6 @@ class Searcher
         private CharArray $chck,
         private CharArray $tail,
     ) {}
-
-    /**
-     * 指定された単一の double-array trie ファイルから探索器を復元する。
-     *
-     * Storage loader と Build 経路の互換的な構築点であり、辞書ディレクトリからの構築入口ではない。
-     * $streams は実体化方式を内包した stream ファクトリで、「ファイルを開いて順次読み、実体化方式に応じた
-     * 配列を返す」プリミティブだけを契約として受け取る。
-     */
-    public static function fromFile(string $filePath, InputStreamFactory $streams): self
-    {
-        $stream = $streams->open($filePath);
-
-        try {
-            $nodeSize = $stream->getInt();
-            $tailIndexSize = $stream->getInt();
-            $tailSize = $stream->getInt();
-
-            return new self(
-                $tailIndexSize,
-                $stream->getIntArrayInstance($tailIndexSize),
-                $stream->getIntArrayInstance($nodeSize),
-                $stream->getShortArrayInstance($tailIndexSize),
-                $stream->getCharArrayInstance($nodeSize),
-                $stream->getCharArrayInstance($tailSize),
-            );
-        } finally {
-            $stream->close();
-        }
-    }
 
     /**
      * 辞書に登録されているキー数を返す。

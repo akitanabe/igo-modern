@@ -6,6 +6,7 @@ namespace IgoModern\Tests\Dictionary\Build;
 
 use IgoModern\Dictionary\Build\DoubleArrayTrieBuilder;
 use IgoModern\Dictionary\Build\Word2IdCategoryIdResolver;
+use IgoModern\Storage\FileTrieLoader;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -49,7 +50,7 @@ class Word2IdCategoryIdResolverTest extends TestCase
             "\002SPACE" => 5,
         ]);
 
-        $resolver = new Word2IdCategoryIdResolver();
+        $resolver = new Word2IdCategoryIdResolver(FileTrieLoader::forBuild());
 
         $this->assertSame(3, $resolver->resolve($directory, 'UTF-8', 'DEFAULT'));
         $this->assertSame(5, $resolver->resolve($directory, 'UTF-8', 'SPACE'));
@@ -70,7 +71,7 @@ class Word2IdCategoryIdResolverTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('unknown category "SPACE" is not registered in word2id.');
 
-        (new Word2IdCategoryIdResolver())->resolve($directory, 'UTF-8', 'SPACE');
+        (new Word2IdCategoryIdResolver(FileTrieLoader::forBuild()))->resolve($directory, 'UTF-8', 'SPACE');
     }
 
     /**

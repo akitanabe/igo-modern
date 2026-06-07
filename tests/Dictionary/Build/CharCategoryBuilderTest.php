@@ -7,6 +7,7 @@ namespace IgoModern\Tests\Dictionary\Build;
 use IgoModern\Dictionary\Build\CategoryIdResolver;
 use IgoModern\Dictionary\Build\CharCategoryBuilder;
 use IgoModern\Storage\FileBinaryDictionaryLoader;
+use IgoModern\Storage\FileTrieLoader;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use RuntimeException;
@@ -39,7 +40,7 @@ class CharCategoryBuilderTest extends TestCase
      */
     public function testCreateDefaultReturnsCharCategoryBuilder(): void
     {
-        $builder = CharCategoryBuilder::createDefault();
+        $builder = CharCategoryBuilder::createDefault(FileTrieLoader::forBuild());
 
         $this->assertInstanceOf(CharCategoryBuilder::class, $builder);
     }

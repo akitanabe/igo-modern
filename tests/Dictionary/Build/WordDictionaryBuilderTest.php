@@ -9,6 +9,7 @@ use IgoModern\Dictionary\Build\Word2IdCategoryIdResolver;
 use IgoModern\Dictionary\Build\WordDictionaryBuilder;
 use IgoModern\Dictionary\WordDicCallback;
 use IgoModern\Storage\FileBinaryDictionaryLoader;
+use IgoModern\Storage\FileTrieLoader;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -71,7 +72,11 @@ class WordDictionaryBuilderTest extends TestCase
         $normalCallback = new CapturingBuiltWordCallback();
         $wordDic->search($this->utf16CodeUnits('猫語です'), 0, $normalCallback);
 
-        $spaceTrieId = (new Word2IdCategoryIdResolver())->resolve($outputDirectory, 'UTF-8', 'SPACE');
+        $spaceTrieId = (new Word2IdCategoryIdResolver(FileTrieLoader::forBuild()))->resolve(
+            $outputDirectory,
+            'UTF-8',
+            'SPACE',
+        );
         $unknownCallback = new CapturingBuiltWordCallback();
         $wordDic->callWordRange($spaceTrieId, 4, 2, true, $unknownCallback);
 

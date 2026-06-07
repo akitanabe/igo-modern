@@ -7,13 +7,11 @@ namespace IgoModern\Tests\Dictionary\Build;
 use IgoModern\Analysis\ViterbiNode;
 use IgoModern\Dictionary\Build\DictionaryBuilder;
 use IgoModern\Dictionary\Trie\CommonPrefixCallback;
-use IgoModern\Dictionary\Trie\Searcher;
 use IgoModern\Dictionary\WordDicCallback;
 use IgoModern\Igo;
 use IgoModern\Storage\FileBinaryDictionaryLoader;
-use IgoModern\Storage\FileInputStreamFactory;
 use IgoModern\Storage\FileStorage;
-use IgoModern\Storage\PagedByteReaderFactory;
+use IgoModern\Storage\FileTrieLoader;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -65,7 +63,7 @@ class DictionaryBuilderIntegrationTest extends TestCase
         $outputDirectory = $this->createTemporaryDirectory('igo-build-output-');
         $this->writeFixture($inputDirectory);
 
-        DictionaryBuilder::standard()->build($outputDirectory, $inputDirectory, 'UTF-8');
+        DictionaryBuilder::standard(FileTrieLoader::forBuild())->build($outputDirectory, $inputDirectory, 'UTF-8');
 
         $result = Igo::fromStorage(FileStorage::fromDataDir($outputDirectory), 'UTF-8')->parse('猫AB');
 
@@ -87,23 +85,19 @@ class DictionaryBuilderIntegrationTest extends TestCase
         $outputDirectory = $this->createTemporaryDirectory('igo-build-output-');
         $this->writeFixture($inputDirectory);
 
-        DictionaryBuilder::standard()->build($outputDirectory, $inputDirectory, 'UTF-8');
+        DictionaryBuilder::standard(FileTrieLoader::forBuild())->build($outputDirectory, $inputDirectory, 'UTF-8');
 
         $this->assertDictionaryFilesExist($outputDirectory);
 
-        $factory = new PagedByteReaderFactory();
-        $streams = FileInputStreamFactory::lazy($factory);
         $loader = FileBinaryDictionaryLoader::forFileStorage($outputDirectory);
 
         $wordCallback = new CapturingIntegrationWordCallback();
         $loader->loadWordDictionary()->search($this->utf16CodeUnits('猫AB'), 0, $wordCallback);
 
         $prefixCallback = new CapturingIntegrationPrefixCallback();
-        Searcher::fromFile($outputDirectory . '/word2id', $streams)->eachCommonPrefix(
-            $this->utf16CodeUnits("\002ALPHA"),
-            0,
-            $prefixCallback,
-        );
+        FileTrieLoader::forBuild()
+            ->load($outputDirectory . '/word2id')
+            ->eachCommonPrefix($this->utf16CodeUnits("\002ALPHA"), 0, $prefixCallback);
 
         $matrix = $loader->loadConnectionMatrix();
         $category = $loader->loadCharCategory();
