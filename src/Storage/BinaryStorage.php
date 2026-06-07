@@ -10,6 +10,7 @@ use IgoModern\Dictionary\Binary\BinaryWordDictionary;
 use IgoModern\Dictionary\Contract\ConnectionMatrix;
 use IgoModern\Dictionary\Contract\UnknownWordDictionary;
 use IgoModern\Dictionary\Contract\WordDictionary;
+use IgoModern\Storage\Loader\BinaryDictionaryLoader;
 
 /**
  * runtime 辞書一式を loader 契約から受け取って保持する storage の共通基底。

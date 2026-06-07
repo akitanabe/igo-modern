@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace IgoModern\Storage;
+namespace IgoModern\Storage\File;
 
 use IgoModern\Binary\Contract\ByteReaderFactory;
 use IgoModern\Binary\Contract\InputStream;

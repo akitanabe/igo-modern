@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace IgoModern\Tests\Dictionary;
 
 use IgoModern\Dictionary\WordDataReader;
-use IgoModern\Storage\PagedByteReaderFactory;
+use IgoModern\Storage\File\PagedByteReaderFactory;
 use IgoModern\Tests\Support\RecordingByteReader;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;

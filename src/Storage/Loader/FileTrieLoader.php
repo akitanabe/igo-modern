@@ -2,11 +2,13 @@
 
 declare(strict_types=1);
 
-namespace IgoModern\Storage;
+namespace IgoModern\Storage\Loader;
 
 use IgoModern\Binary\Contract\InputStreamFactory;
 use IgoModern\Dictionary\Trie\Searcher;
 use IgoModern\Dictionary\Trie\TrieLoader;
+use IgoModern\Storage\File\FileInputStreamFactory;
+use IgoModern\Storage\File\PagedByteReaderFactory;
 
 /**
  * ファイルから trie を読み込み Searcher へ復元するローダー。

@@ -7,7 +7,7 @@ namespace IgoModern\Tests\Dictionary\Trie;
 use IgoModern\Binary\CharDynamicArray;
 use IgoModern\Dictionary\Trie\CommonPrefixCallback;
 use IgoModern\Dictionary\Trie\Searcher;
-use IgoModern\Storage\FileTrieLoader;
+use IgoModern\Storage\Loader\FileTrieLoader;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
 

@@ -13,7 +13,7 @@ use IgoModern\Binary\IntDynamicArray;
 use IgoModern\Binary\IntMemoryArray;
 use IgoModern\Binary\ShortDynamicArray;
 use IgoModern\Binary\ShortMemoryArray;
-use IgoModern\Storage\PagedByteReaderFactory;
+use IgoModern\Storage\File\PagedByteReaderFactory;
 use IgoModern\Tests\Support\RecordingByteReader;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;

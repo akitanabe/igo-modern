@@ -9,9 +9,9 @@ use IgoModern\Dictionary\Build\DictionaryBuilder;
 use IgoModern\Dictionary\Trie\CommonPrefixCallback;
 use IgoModern\Dictionary\WordDicCallback;
 use IgoModern\Igo;
-use IgoModern\Storage\FileBinaryDictionaryLoader;
 use IgoModern\Storage\FileStorage;
-use IgoModern\Storage\FileTrieLoader;
+use IgoModern\Storage\Loader\FileBinaryDictionaryLoader;
+use IgoModern\Storage\Loader\FileTrieLoader;
 use PHPUnit\Framework\TestCase;
 
 /**

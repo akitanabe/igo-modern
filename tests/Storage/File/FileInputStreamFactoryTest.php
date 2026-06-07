@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace IgoModern\Tests\Storage;
+namespace IgoModern\Tests\Storage\File;
 
 use IgoModern\Binary\Contract\InputStream;
 use IgoModern\Binary\Contract\InputStreamFactory;
 use IgoModern\Binary\IntDynamicArray;
 use IgoModern\Binary\IntMemoryArray;
-use IgoModern\Storage\FileInputStreamFactory;
-use IgoModern\Storage\PagedByteReaderFactory;
+use IgoModern\Storage\File\FileInputStreamFactory;
+use IgoModern\Storage\File\PagedByteReaderFactory;
 use IgoModern\Tests\Support\RecordingByteReaderFactory;
 use PHPUnit\Framework\TestCase;
 

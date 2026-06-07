@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace IgoModern\Storage;
+namespace IgoModern\Storage\File;
 
 /**
  * 辞書バイナリ配列を「ファイル遅延読み」と「メモリ常駐」のどちらで実体化するかを表す方式。

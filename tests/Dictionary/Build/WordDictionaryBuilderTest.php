@@ -8,8 +8,8 @@ use IgoModern\Analysis\ViterbiNode;
 use IgoModern\Dictionary\Build\Word2IdCategoryIdResolver;
 use IgoModern\Dictionary\Build\WordDictionaryBuilder;
 use IgoModern\Dictionary\WordDicCallback;
-use IgoModern\Storage\FileBinaryDictionaryLoader;
-use IgoModern\Storage\FileTrieLoader;
+use IgoModern\Storage\Loader\FileBinaryDictionaryLoader;
+use IgoModern\Storage\Loader\FileTrieLoader;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 

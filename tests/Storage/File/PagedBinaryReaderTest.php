@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace IgoModern\Tests\Storage;
+namespace IgoModern\Tests\Storage\File;
 
-use IgoModern\Storage\PagedBinaryReader;
+use IgoModern\Storage\File\PagedBinaryReader;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 

@@ -6,8 +6,8 @@ namespace IgoModern\Tests\Dictionary\Build;
 
 use IgoModern\Dictionary\Build\CategoryIdResolver;
 use IgoModern\Dictionary\Build\CharCategoryBuilder;
-use IgoModern\Storage\FileBinaryDictionaryLoader;
-use IgoModern\Storage\FileTrieLoader;
+use IgoModern\Storage\Loader\FileBinaryDictionaryLoader;
+use IgoModern\Storage\Loader\FileTrieLoader;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use RuntimeException;

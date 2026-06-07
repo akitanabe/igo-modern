@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace IgoModern\Tests\Storage;
+namespace IgoModern\Tests\Storage\Loader;
 
 use IgoModern\Binary\CharDynamicArray;
 use IgoModern\Binary\CharMemoryArray;
 use IgoModern\Dictionary\Trie\CommonPrefixCallback;
 use IgoModern\Dictionary\Trie\Searcher;
-use IgoModern\Storage\FileInputStreamFactory;
-use IgoModern\Storage\FileTrieLoader;
-use IgoModern\Storage\PagedByteReaderFactory;
+use IgoModern\Storage\File\FileInputStreamFactory;
+use IgoModern\Storage\File\PagedByteReaderFactory;
+use IgoModern\Storage\Loader\FileTrieLoader;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
 

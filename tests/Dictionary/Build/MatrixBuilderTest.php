@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace IgoModern\Tests\Dictionary\Build;
 
 use IgoModern\Dictionary\Build\MatrixBuilder;
-use IgoModern\Storage\FileBinaryDictionaryLoader;
+use IgoModern\Storage\Loader\FileBinaryDictionaryLoader;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 

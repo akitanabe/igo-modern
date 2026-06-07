@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace IgoModern\Tests\Storage;
+namespace IgoModern\Tests\Storage\File;
 
 use IgoModern\Binary\CharDynamicArray;
 use IgoModern\Binary\CharMemoryArray;
@@ -10,8 +10,8 @@ use IgoModern\Binary\IntDynamicArray;
 use IgoModern\Binary\IntMemoryArray;
 use IgoModern\Binary\ShortDynamicArray;
 use IgoModern\Binary\ShortMemoryArray;
-use IgoModern\Storage\ArrayMaterialization;
-use IgoModern\Storage\FileInputStream;
+use IgoModern\Storage\File\ArrayMaterialization;
+use IgoModern\Storage\File\FileInputStream;
 use IgoModern\Tests\Support\RecordingByteReaderFactory;
 use PHPUnit\Framework\TestCase;
 

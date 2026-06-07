@@ -6,7 +6,7 @@ namespace IgoModern\Tests\Dictionary\Build;
 
 use IgoModern\Dictionary\Build\DoubleArrayTrieBuilder;
 use IgoModern\Dictionary\Build\Word2IdCategoryIdResolver;
-use IgoModern\Storage\FileTrieLoader;
+use IgoModern\Storage\Loader\FileTrieLoader;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 

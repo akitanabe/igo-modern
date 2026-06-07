@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace IgoModern\Storage;
+namespace IgoModern\Storage\Loader;
 
 use IgoModern\Binary\Contract\ByteReaderFactory;
 use IgoModern\Binary\Contract\InputStreamFactory;
@@ -13,6 +13,8 @@ use IgoModern\Dictionary\Binary\BinaryWordDictionary;
 use IgoModern\Dictionary\Category;
 use IgoModern\Dictionary\CharCategory;
 use IgoModern\Dictionary\WordDataReader;
+use IgoModern\Storage\File\FileInputStreamFactory;
+use IgoModern\Storage\File\PagedByteReaderFactory;
 
 /**
  * ファイル辞書から runtime 辞書一式を構築する loader。

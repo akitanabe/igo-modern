@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace IgoModern\Tests\Storage;
+namespace IgoModern\Tests\Storage\Loader;
 
 use IgoModern\Analysis\ViterbiNode;
 use IgoModern\Binary\IntDynamicArray;
 use IgoModern\Binary\IntMemoryArray;
 use IgoModern\Dictionary\Build\DictionaryBuilder;
 use IgoModern\Dictionary\WordDicCallback;
-use IgoModern\Storage\FileBinaryDictionaryLoader;
-use IgoModern\Storage\FileInputStreamFactory;
-use IgoModern\Storage\FileTrieLoader;
+use IgoModern\Storage\File\FileInputStreamFactory;
+use IgoModern\Storage\Loader\FileBinaryDictionaryLoader;
+use IgoModern\Storage\Loader\FileTrieLoader;
 use IgoModern\Tests\Support\RecordingByteReaderFactory;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;

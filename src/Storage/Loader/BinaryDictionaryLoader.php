@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace IgoModern\Storage;
+namespace IgoModern\Storage\Loader;
 
 use IgoModern\Dictionary\Binary\BinaryConnectionMatrix;
 use IgoModern\Dictionary\Binary\BinaryUnknownWordDictionary;

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace IgoModern\Storage;
 
+use IgoModern\Storage\Loader\FileBinaryDictionaryLoader;
+
 /**
  * 辞書配列を常駐（MemoryArray）で実体化し、ファイルアクセスを避ける storage。
  */
