@@ -45,14 +45,23 @@ Binary namespace からファイルシステム・実体化ポリシーの知識
 `ArrayMaterialization` を Storage へ移管。辞書クラスの `fromDataDir` を契約依存へ切り替え、
 Binary ← Dictionary ← Storage の依存方向を維持する）。
 
-### 段階4 — runtime 辞書ディレクトリ構造の Storage 集約
+### 段階4 — runtime 辞書ディレクトリ構造の Storage 集約 ✅ 実装済み
 段階3で Storage 側へ移した stream / reader 契約を足場に、runtime 解析で使う辞書ディレクトリ構造
 （`word2id` / `word.dat` / `word.ary.idx` / `word.inf` / `matrix.bin` / `code2category` /
 `char.category` などのファイル配置）を Storage 内部 loader へ寄せる。
 
-実装方針は[runtime 辞書 loader へのディレクトリ構造集約プラン](dictionary-storage-runtime-loader-plan.md)に基づく。
-`BinaryDictionaryLoader` 契約とファイル辞書用 loader 実装を追加し、File/Memory の実体化方針は
-named constructor で切り替える。runtime 辞書クラスの `fromDataDir` は Storage loader へ移し、
-辞書クラスは構築済み部品を受け取って検索・未知語生成・連接コスト参照を行う責務に寄せる。
-`Word2IdCategoryIdResolver` は今回の対象外とし、`Searcher::fromFile` は Build 経路との互換的な
-構築点として残す。
+実装は[runtime 辞書 loader へのディレクトリ構造集約プラン](dictionary-storage-runtime-loader-plan.md)に基づき完了
+（`BinaryDictionaryLoader` 契約と `FileBinaryDictionaryLoader` を追加し、File/Memory の実体化方針は
+named constructor で切り替え。runtime 辞書クラスの `fromDataDir` を削除し、辞書クラスは構築済み部品を
+受け取って検索・未知語生成・連接コスト参照を行う責務に寄せた）。
+`Word2IdCategoryIdResolver` は対象外とし、`Searcher::fromFile` は Build 経路との互換的な構築点として残した。
+
+### 段階5 — Build 経路の Storage 依存除去 / TrieLoader 契約導入
+段階4までで runtime 辞書層からの Storage 依存はゼロになったが、Build 経路の `Word2IdCategoryIdResolver`
+だけが `FileInputStreamFactory` / `PagedByteReaderFactory` を直接生成している。この段階では
+`TrieLoader` 契約を Dictionary 層へ導入し、resolver から Storage 具象生成を外す。
+trie ファイル形式の読み取りは `Searcher::fromFile` から Storage の `FileTrieLoader` へ移し、
+`Searcher::fromFile` は削除する。これにより `src/Dictionary`（Build 含む）から `IgoModern\Storage` への
+依存をゼロにし、`Searcher` をファイル知識のない純粋クラスに寄せる。
+
+実装方針は[Build 経路の Storage 依存除去 / TrieLoader 契約導入プラン](dictionary-storage-build-loader-plan.md)に基づく。
