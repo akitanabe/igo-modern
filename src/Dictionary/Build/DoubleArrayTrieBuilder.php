@@ -28,20 +28,22 @@ class DoubleArrayTrieBuilder
         $nextBaseCandidate = 1;
         $this->assignBases($root, $usedIndexes, $nextBaseCandidate);
         $nodeSize = $this->nodeSize($usedIndexes);
-        $base = array_fill(0, $nodeSize, 0);
-        $chck = array_fill(0, $nodeSize, 0);
-        $base[0] = $this->assignedBase($root);
-        $begs = array_fill(0, count($keys), 0);
-        $lens = array_fill(0, count($keys), 0);
-        $tail = [];
+        // base/chck 確保前に配置済み index 集合を解放し、ピークの重なりを避ける。
+        unset($usedIndexes);
+
+        $keySetSize = count($keys);
+        // base/chck/begs/lens は最終ファイル形式そのままのネイティブバイナリバッファとして確保する。
+        // UniDic 規模では PHP 配列(1要素≒80B)が peak を押し上げるため、要素数ぶんのバイト列へ
+        // オフセット直接代入する。未書込スロットは \0(=0) のままで従来の array_fill(...,0) と等価。
+        $base = str_repeat("\0", $nodeSize * 4);
+        $chck = str_repeat("\0", $nodeSize * 2);
+        $begs = str_repeat("\0", $keySetSize * 4);
+        $lens = str_repeat("\0", $keySetSize * 2);
+        $tail = '';
+
+        $this->writeInt32($base, 0, $this->assignedBase($root));
         $this->emitNode($root, $base, $chck, $begs, $lens, $tail);
-        $this->writeBinaryFile($fileName, $this->dictionaryBinary(
-            array_values($base),
-            array_values($chck),
-            $begs,
-            $lens,
-            $tail,
-        ));
+        $this->writeBinaryFile($fileName, $this->dictionaryBinary($base, $chck, $begs, $lens, $tail));
     }
 
     /**
@@ -195,50 +197,100 @@ class DoubleArrayTrieBuilder
     }
 
     /**
-     * 配置済み trie ノードを Searcher の base/check 配列と tail 配列へ展開する。
+     * 配置済み trie ノードを Searcher の base/check バッファと tail バッファへ展開する。
      *
-     * ipadic 規模の辞書では各配列が巨大になるため、再帰ごとの配列コピーを避けて同じバッファを更新する。
-     *
-     * @param array<int, int> $base
-     * @param array<int, int> $chck
-     * @param array<int, int> $begs
-     * @param array<int, int> $lens
-     * @param list<int> $tail
+     * 各バッファは最終ファイル形式そのままのネイティブバイナリ。再帰ごとのコピーを避けるため参照渡しし、
+     * base/chck/begs/lens へはオフセット直接代入、tail へは末尾 append のみ行う（バッファを read しない）。
      */
     private function emitNode(
         TrieBuildNode $node,
-        array &$base,
-        array &$chck,
-        array &$begs,
-        array &$lens,
-        array &$tail,
+        string &$base,
+        string &$chck,
+        string &$begs,
+        string &$lens,
+        string &$tail,
     ): void {
         $nodeBase = $this->assignedBase($node);
 
         if ($node->id === null) {
-            $chck[$nodeBase] = 1;
+            $this->writeUint16($chck, $nodeBase * 2, 1);
         } else {
-            $base[$nodeBase] = -($node->id + 1);
-            $chck[$nodeBase] = 0;
+            $this->writeInt32($base, $nodeBase * 4, -($node->id + 1));
+            $this->writeUint16($chck, $nodeBase * 2, 0);
         }
 
         foreach ($node->children as $code => $child) {
             $index = $nodeBase + $code;
-            $chck[$index] = $code;
+            $this->writeUint16($chck, $index * 2, $code);
             $compressed = $this->compressedTail($child);
 
             if ($compressed !== null) {
                 $id = $compressed['id'];
-                $base[$index] = -($id + 1);
-                $begs[$id] = count($tail);
-                $lens[$id] = count($compressed['suffix']);
-                array_push($tail, ...$compressed['suffix']);
+                $this->writeInt32($base, $index * 4, -($id + 1));
+                // begs は append 前の tail code unit 数（= strlen/2）を記録する。
+                $this->writeInt32($begs, $id * 4, intdiv(strlen($tail), 2));
+                $this->writeInt16($lens, $id * 2, count($compressed['suffix']));
+
+                foreach ($compressed['suffix'] as $unit) {
+                    $tail .= pack('S', $unit);
+                }
 
                 continue;
             }
 
-            $base[$index] = $this->assignedBase($child);
+            $this->writeInt32($base, $index * 4, $this->assignedBase($child));
             $this->emitNode($child, $base, $chck, $begs, $lens, $tail);
+        }
+    }
+
+    /**
+     * 確保済みバッファの指定オフセットへ signed int32 を native endian で上書きする。
+     */
+    private function writeInt32(string &$buffer, int $offset, int $value): void
+    {
+        if ($value < -2_147_483_648 || $value > 2_147_483_647) {
+            throw new RuntimeException('trie int32 value out of range.');
+        }
+
+        $this->writeBytes($buffer, $offset, pack('l', $value), 4);
+    }
+
+    /**
+     * 確保済みバッファの指定オフセットへ signed short を native endian で上書きする。
+     */
+    private function writeInt16(string &$buffer, int $offset, int $value): void
+    {
+        if ($value < -32_768 || $value > 32_767) {
+            throw new RuntimeException('trie int16 value out of range.');
+        }
+
+        $this->writeBytes($buffer, $offset, pack('s', $value), 2);
+    }
+
+    /**
+     * 確保済みバッファの指定オフセットへ unsigned short を native endian で上書きする。
+     */
+    private function writeUint16(string &$buffer, int $offset, int $value): void
+    {
+        if ($value < 0 || $value > 65_535) {
+            throw new RuntimeException('trie uint16 value out of range.');
+        }
+
+        $this->writeBytes($buffer, $offset, pack('S', $value), 2);
+    }
+
+    /**
+     * 確保済み範囲だけをバイト単位で上書きする。範囲外は文字列自動拡張による
+     * padding 混入(=辞書破損)を招くため RuntimeException で弾く。
+     */
+    private function writeBytes(string &$buffer, int $offset, string $bytes, int $width): void
+    {
+        if ($offset < 0 || ($offset + $width) > strlen($buffer)) {
+            throw new RuntimeException('trie buffer write out of bounds.');
+        }
+
+        for ($i = 0; $i < $width; $i++) {
+            $buffer[$offset + $i] = $bytes[$i];
         }
     }
 
@@ -275,23 +327,19 @@ class DoubleArrayTrieBuilder
     }
 
     /**
-     * Searcher が読む順序でヘッダ、tail index、base、lens、check、tail を連結する。
+     * Searcher が読む順序でヘッダ、begs、base、lens、chck、tail を連結する。
      *
-     * @param list<int> $base
-     * @param list<int> $chck
-     * @param array<int, int> $begs
-     * @param array<int, int> $lens
-     * @param list<int> $tail
+     * 各引数は既にネイティブバイナリのバッファなので再パックは不要。ヘッダ件数は要素数を別管理せず
+     * バッファ byte 長から算出する（tailSize は code unit 数 = strlen/2。byte 長のままだと即破損）。
      */
-    private function dictionaryBinary(array $base, array $chck, array $begs, array $lens, array $tail): string
+    private function dictionaryBinary(string $base, string $chck, string $begs, string $lens, string $tail): string
     {
+        $nodeSize = intdiv(strlen($base), 4);
+        $keySetSize = intdiv(strlen($begs), 4);
+        $tailSize = intdiv(strlen($tail), 2);
+
         return (
-            $this->packInts([count($base), count($begs), count($tail)])
-            . $this->packInts(array_values($begs))
-            . $this->packInts($base)
-            . $this->packShorts(array_values($lens))
-            . $this->packChars($chck)
-            . $this->packChars($tail)
+            pack('l', $nodeSize) . pack('l', $keySetSize) . pack('l', $tailSize) . $begs . $base . $lens . $chck . $tail
         );
     }
 
@@ -310,54 +358,6 @@ class DoubleArrayTrieBuilder
         }
 
         return array_values($values);
-    }
-
-    /**
-     * int 値の列を native endian の連続バイナリへ変換する。
-     *
-     * @param list<int> $values
-     */
-    private function packInts(array $values): string
-    {
-        $binary = '';
-
-        foreach ($values as $value) {
-            $binary .= pack('l', $value);
-        }
-
-        return $binary;
-    }
-
-    /**
-     * signed short 値の列を native endian の連続バイナリへ変換する。
-     *
-     * @param list<int> $values
-     */
-    private function packShorts(array $values): string
-    {
-        $binary = '';
-
-        foreach ($values as $value) {
-            $binary .= pack('s', $value);
-        }
-
-        return $binary;
-    }
-
-    /**
-     * unsigned short 値の列を native endian の連続バイナリへ変換する。
-     *
-     * @param list<int> $values
-     */
-    private function packChars(array $values): string
-    {
-        $binary = '';
-
-        foreach ($values as $value) {
-            $binary .= pack('S', $value);
-        }
-
-        return $binary;
     }
 
     /**
