@@ -106,6 +106,7 @@ php bin/bench parse --dictionary=dist/igo-dic
 ```bash
 XDEBUG_MODE=off php bin/bench parse \
   --dictionary=dist/igo-dic \
+  --storage=memory \
   --sample=news \
   --warmup=1 \
   --iterations=10
@@ -116,7 +117,8 @@ XDEBUG_MODE=off php bin/bench parse \
 - `-d` / `--dictionary`: 測定に使う Igo 形式辞書ディレクトリです。
 - `-r` / `--iterations`: 実測する parse 回数です。未指定時は `3` です。
 - `-w` / `--warmup`: 測定前に捨て実行する parse 回数です。未指定時は `0` です。
-- `-s` / `--sample`: 組み込みサンプルです。`short`、`news`、`mixed` を指定できます。
+- `--sample`: 組み込みサンプルです。`short`、`news`、`mixed` を指定できます。
+- `-s` / `--storage`: 辞書の読み込み方式です。`file`、`memory` を指定できます。未指定時は `file` です。
 - `-i` / `--text`: 測定対象テキストを直接指定します。
 - `-f` / `--file`: UTF-8 の測定対象ファイルを指定します。
 - `-o` / `--output`: ベンチマークレポートをファイルへ保存します。

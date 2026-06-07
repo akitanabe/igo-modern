@@ -21,6 +21,7 @@ class ParseBenchmarkConfig
         public string $sample = 'mixed',
         public ?string $text = null,
         public ?string $file = null,
+        public string $storage = 'file',
     ) {}
 
     /**

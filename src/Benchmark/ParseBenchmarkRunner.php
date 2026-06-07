@@ -8,6 +8,7 @@ use IgoModern\Igo;
 use IgoModern\Morpheme;
 use IgoModern\Parser;
 use IgoModern\Storage\FileStorage;
+use IgoModern\Storage\MemoryStorage;
 use InvalidArgumentException;
 
 /**
@@ -15,13 +16,13 @@ use InvalidArgumentException;
  */
 class ParseBenchmarkRunner
 {
-    /** @var callable(string): Parser 辞書ディレクトリから解析器を作るファクトリを保持する。 */
+    /** @var callable(string, string): Parser 辞書ディレクトリと storage 種別から解析器を作るファクトリを保持する。 */
     private $parserFactory;
 
     /**
      * 解析器生成を必須依存として受け取り、CLI とテストで同じ測定処理を使えるようにする。
      *
-     * @param callable(string): Parser $parserFactory
+     * @param callable(string, string): Parser $parserFactory
      */
     public function __construct(callable $parserFactory)
     {
@@ -33,10 +34,11 @@ class ParseBenchmarkRunner
      */
     public static function createDefault(): self
     {
-        return new self(static fn(string $dictionary): Parser => Igo::fromStorage(
-            FileStorage::fromDataDir($dictionary),
-            'UTF-8',
-        ));
+        return new self(static fn(string $dictionary, string $storage): Parser => Igo::fromStorage(match ($storage) {
+            'file' => FileStorage::fromDataDir($dictionary),
+            'memory' => MemoryStorage::fromDataDir($dictionary),
+            default => throw new InvalidArgumentException('storage must be file or memory.'),
+        }, 'UTF-8'));
     }
 
     /**
@@ -50,7 +52,7 @@ class ParseBenchmarkRunner
 
         // 辞書ロードによる常駐メモリ増分を、ロード前後の使用量差として測り、辞書コストを独立指標にする。
         $beforeLoad = memory_get_usage();
-        $parser = ($this->parserFactory)($config->dictionary);
+        $parser = ($this->parserFactory)($config->dictionary, $config->storage);
         $dictionaryResidentBytes = max(0, memory_get_usage() - $beforeLoad);
 
         $this->warmUpParser($parser, $text, $config->warmup);
@@ -82,6 +84,10 @@ class ParseBenchmarkRunner
 
         if ($config->warmup < 0) {
             throw new InvalidArgumentException('warmup must be a non-negative integer.');
+        }
+
+        if (!in_array($config->storage, ['file', 'memory'], true)) {
+            throw new InvalidArgumentException('storage must be file or memory.');
         }
     }
 
