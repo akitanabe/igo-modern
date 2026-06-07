@@ -103,6 +103,35 @@ class DoubleArrayTrieBuilderTest extends TestCase
     }
 
     /**
+     * PHP が数値文字列キーを整数へ自動変換しても、Searcher が正しく読めることを確認する。
+     */
+    public function testBuildHandlesNumericStringKeys(): void
+    {
+        $fileName = $this->createTemporaryFile();
+        (new DoubleArrayTrieBuilder())->build([
+            '1' => 0,
+            '10' => 1,
+            'A' => 2,
+        ], $fileName);
+
+        $searcher = FileTrieLoader::forBuild()->load($fileName);
+        $one = new CapturingPrefixCallback();
+        $ten = new CapturingPrefixCallback();
+
+        $searcher->eachCommonPrefix($this->utf16CodeUnits('1'), 0, $one);
+        $searcher->eachCommonPrefix($this->utf16CodeUnits('10'), 0, $ten);
+
+        $this->assertSame([['start' => 0, 'offset' => 1, 'id' => 0]], $one->matches);
+        $this->assertSame(
+            [
+                ['start' => 0, 'offset' => 1, 'id' => 0],
+                ['start' => 0, 'offset' => 2, 'id' => 1],
+            ],
+            $ten->matches,
+        );
+    }
+
+    /**
      * 空のキーは Searcher の空文字一致と衝突するため、生成前に拒否することを確認する。
      */
     public function testBuildFailsWhenKeyIsEmpty(): void
