@@ -67,6 +67,24 @@ class DoubleArrayTrieBuilderTest extends TestCase
     }
 
     /**
+     * 内部表現を変えても出力 word2id バイト列が不変であることを golden fixture で固定する。
+     *
+     * 分岐ノード(ca)・終端負値 base(cat/car)・非空 tail 圧縮(dog→suffix "og")を含む小 fixture を用い、
+     * バイトバッファ化リファクタ前後で byte-for-byte 一致することを保証する（破損の早期検出）。
+     */
+    public function testBuildProducesByteIdenticalGoldenWord2Id(): void
+    {
+        $fileName = $this->createTemporaryFile();
+        (new DoubleArrayTrieBuilder())->build(['cat' => 0, 'car' => 1, 'dog' => 2], $fileName);
+
+        $actual = file_get_contents($fileName);
+        $golden = file_get_contents(__DIR__ . '/fixtures/word2id-golden.bin');
+        $this->assertIsString($actual);
+        $this->assertIsString($golden);
+        $this->assertSame(bin2hex($golden), bin2hex($actual));
+    }
+
+    /**
      * 分岐のない長い suffix は tail 領域へ圧縮し、Searcher 互換のまま読めることを確認する。
      */
     public function testBuildCompressesSinglePathSuffixIntoTail(): void
