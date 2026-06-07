@@ -14,7 +14,10 @@ class DoubleArrayTrieBuilder
     /**
      * キー集合を tail 圧縮付きの double-array trie に配置し、word2id バイナリとして書き込む。
      *
-     * @param array<string, int> $keys
+     * キーは概念上 UTF-8 文字列だが、PHP は "1" 等の数値文字列キーを int へ自動変換するため、
+     * 受け取り型は array-key（int|string）とし、内部で (string) キャストして扱う。
+     *
+     * @param array<array-key, int> $keys
      */
     public function build(array $keys, string $fileName): void
     {
@@ -44,7 +47,7 @@ class DoubleArrayTrieBuilder
     /**
      * Searcher の keySetSize と一致するように、trie ID が 0 から連続していることを保証する。
      *
-     * @param array<string, int> $keys
+     * @param array<array-key, int> $keys
      */
     private function assertContiguousIds(array $keys): void
     {
@@ -60,7 +63,7 @@ class DoubleArrayTrieBuilder
     /**
      * 入力キーを通常の trie へ挿入し、double-array 配置前の木構造を作る。
      *
-     * @param array<string, int> $keys
+     * @param array<array-key, int> $keys
      */
     private function buildTrie(array $keys): TrieBuildNode
     {

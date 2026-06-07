@@ -5,9 +5,14 @@ declare(strict_types=1);
 namespace IgoModern\Dictionary\Build;
 
 use RuntimeException;
+use Throwable;
 
 /**
  * matrix.def から runtime Matrix が読める matrix.bin を生成する。
+ *
+ * UniDic 級の巨大 matrix.def(数百 MB・数千万エントリ)でも破綻しないよう、入力は
+ * fgets でストリーミング読みし、出力は matrix.bin と同じサイズ(数十 MB)のバイナリ
+ * バッファだけをメモリに置く。中間に巨大 PHP 配列を作らない。
  */
 class MatrixBuilder implements DictionaryBuildStep
 {
@@ -16,58 +21,105 @@ class MatrixBuilder implements DictionaryBuildStep
      */
     public function build(string $outputDirectory, string $inputDirectory, string $encoding, string $delimiter): void
     {
-        $matrix = $this->readMatrixDefinition($inputDirectory . '/matrix.def');
+        // 巨大 PHP 配列を作らず、出力サイズ分のバイナリへ転置済みコストを直接組み立てる。
+        $matrixBinary = $this->buildMatrixBinary($inputDirectory . '/matrix.def');
         $this->ensureOutputDirectory($outputDirectory);
-        $this->writeBinaryFile($outputDirectory . '/matrix.bin', $this->matrixBinary($matrix));
+        $this->writeBinaryFile($outputDirectory . '/matrix.bin', $matrixBinary['header'], $matrixBinary['costs']);
     }
 
     /**
-     * matrix.def の数値定義を読み取り、ヘッダと順序検証済みコスト配列へ変換する。
+     * matrix.def をストリーミング読みし、ヘッダ列と right-major のコストバッファへ変換する。
      *
-     * @return array{leftSize:int, rightSize:int, costs:list<int>}
+     * @return array{header:string, costs:string}
      */
-    private function readMatrixDefinition(string $fileName): array
+    private function buildMatrixBinary(string $fileName): array
     {
-        $lines = file($fileName, FILE_IGNORE_NEW_LINES);
+        $handle = fopen($fileName, 'r');
 
-        if ($lines === false) {
+        if ($handle === false) {
             throw new RuntimeException(sprintf('failed to read matrix.def "%s".', $fileName));
         }
 
-        $definitionLines = $this->definitionLines($lines);
-        $header = array_shift($definitionLines);
-
-        if ($header === null) {
-            throw new RuntimeException('matrix.def header is missing.');
+        try {
+            return $this->readDefinition($handle);
+        } finally {
+            fclose($handle);
         }
-
-        [$leftSize, $rightSize] = $this->parseHeader($header['line'], $header['number']);
-        $costs = $this->parseCosts($definitionLines, $leftSize, $rightSize);
-
-        return ['leftSize' => $leftSize, 'rightSize' => $rightSize, 'costs' => $costs];
     }
 
     /**
-     * 空行を除外し、エラー表示に使う元の行番号を保った定義行へ整える。
+     * ヘッダで確保したバッファへ、各コスト行を MeCab の left-major 順検証付きで right-major へ詰め替える。
      *
-     * @param list<string> $lines
-     * @return list<array{number:int, line:string}>
+     * @param resource $handle
+     * @return array{header:string, costs:string}
      */
-    private function definitionLines(array $lines): array
+    private function readDefinition($handle): array
     {
-        $definitionLines = [];
+        $lineNumber = 0;
+        [$leftSize, $rightSize] = $this->readHeader($handle, $lineNumber);
 
-        foreach ($lines as $index => $line) {
-            $trimmed = trim($line);
+        $expectedEntryCount = $leftSize * $rightSize;
+        // matrix.bin のコスト領域と同サイズの 0 埋めバッファを一度だけ確保する。
+        $costs = str_repeat("\0", $expectedEntryCount * 2);
+        $index = 0;
 
-            if ($trimmed === '') {
+        while (($raw = fgets($handle)) !== false) {
+            $lineNumber++;
+            $line = trim($raw);
+
+            if ($line === '') {
                 continue;
             }
 
-            $definitionLines[] = ['number' => $index + 1, 'line' => $trimmed];
+            // 余剰行は parse/順序検証より前に弾き、既存の entry count 不一致挙動を保つ。
+            if ($index >= $expectedEntryCount) {
+                throw new RuntimeException('matrix.def entry count does not match header sizes.');
+            }
+
+            [$leftId, $rightId, $cost] = $this->parseCostLine($line, $lineNumber);
+            $expectedLeftId = intdiv($index, $rightSize);
+            $expectedRightId = $index % $rightSize;
+
+            if ($leftId !== $expectedLeftId || $rightId !== $expectedRightId) {
+                throw new RuntimeException(sprintf('matrix.def line %d has unexpected context ids.', $lineNumber));
+            }
+
+            // right-major offset へ signed short を直接バイト代入する(syscall を伴わない O(1))。
+            $offset = (($rightId * $leftSize) + $leftId) * 2;
+            $short = pack('s', $cost);
+            $costs[$offset] = $short[0];
+            $costs[$offset + 1] = $short[1];
+
+            $index++;
         }
 
-        return $definitionLines;
+        if ($index !== $expectedEntryCount) {
+            throw new RuntimeException('matrix.def entry count does not match header sizes.');
+        }
+
+        return ['header' => pack('l', $leftSize) . pack('l', $rightSize), 'costs' => $costs];
+    }
+
+    /**
+     * 空行を読み飛ばして最初の定義行をヘッダとして解釈し、行番号を呼び出し側へ進める。
+     *
+     * @param resource $handle
+     * @return array{0:int, 1:int}
+     */
+    private function readHeader($handle, int &$lineNumber): array
+    {
+        while (($raw = fgets($handle)) !== false) {
+            $lineNumber++;
+            $line = trim($raw);
+
+            if ($line === '') {
+                continue;
+            }
+
+            return $this->parseHeader($line, $lineNumber);
+        }
+
+        throw new RuntimeException('matrix.def header is missing.');
     }
 
     /**
@@ -91,37 +143,6 @@ class MatrixBuilder implements DictionaryBuildStep
         }
 
         return [$leftSize, $rightSize];
-    }
-
-    /**
-     * 各コスト行を MeCab の left-major 順で検証し、runtime 用 right-major 配列へ詰め替える。
-     *
-     * @param list<array{number:int, line:string}> $lines
-     * @return list<int>
-     */
-    private function parseCosts(array $lines, int $leftSize, int $rightSize): array
-    {
-        $expectedEntryCount = $leftSize * $rightSize;
-
-        if (count($lines) !== $expectedEntryCount) {
-            throw new RuntimeException('matrix.def entry count does not match header sizes.');
-        }
-
-        $costs = array_fill(0, $expectedEntryCount, 0);
-
-        foreach ($lines as $index => $line) {
-            [$leftId, $rightId, $cost] = $this->parseCostLine($line['line'], $line['number']);
-            $expectedLeftId = intdiv($index, $rightSize);
-            $expectedRightId = $index % $rightSize;
-
-            if ($leftId !== $expectedLeftId || $rightId !== $expectedRightId) {
-                throw new RuntimeException(sprintf('matrix.def line %d has unexpected context ids.', $line['number']));
-            }
-
-            $costs[($rightId * $leftSize) + $leftId] = $cost;
-        }
-
-        return array_values($costs);
     }
 
     /**
@@ -193,40 +214,67 @@ class MatrixBuilder implements DictionaryBuildStep
     }
 
     /**
-     * Matrix reader と同じ pack 契約で、ヘッダ int と right-major の signed short 列を連結する。
-     *
-     * @param array{leftSize:int, rightSize:int, costs:list<int>} $matrix
+     * matrix.bin を一時ファイルへ書き切ってから rename し、失敗時に壊れた出力を残さない。
      */
-    private function matrixBinary(array $matrix): string
+    private function writeBinaryFile(string $fileName, string $header, string $costs): void
     {
-        return pack('l', $matrix['leftSize']) . pack('l', $matrix['rightSize']) . $this->packShorts($matrix['costs']);
-    }
+        $temporaryName = $fileName . '.tmp';
+        $handle = fopen($temporaryName, 'w');
 
-    /**
-     * signed short のコスト列を native endian の連続バイナリへ変換する。
-     *
-     * @param list<int> $values
-     */
-    private function packShorts(array $values): string
-    {
-        $binary = '';
-
-        foreach ($values as $value) {
-            $binary .= pack('s', $value);
+        if ($handle === false) {
+            throw new RuntimeException(sprintf('failed to write matrix.bin "%s".', $temporaryName));
         }
 
-        return $binary;
+        try {
+            // ヘッダと本文を連結せず個別に書き、巨大 costs 文字列の複製を避ける。
+            $this->writeAll($handle, $header, $temporaryName);
+            $this->writeAll($handle, $costs, $temporaryName);
+        } catch (Throwable $error) {
+            fclose($handle);
+            $this->removeIfExists($temporaryName);
+
+            throw $error;
+        }
+
+        fclose($handle);
+
+        if (!rename($temporaryName, $fileName)) {
+            $this->removeIfExists($temporaryName);
+
+            throw new RuntimeException(sprintf('failed to write matrix.bin "%s".', $fileName));
+        }
     }
 
     /**
-     * matrix.bin を一括で書き込み、短い書き込みを辞書生成失敗として扱う。
+     * 短い書き込みに備え、要求バイトを全て書き切るまで fwrite を繰り返す。
+     *
+     * @param resource $handle
      */
-    private function writeBinaryFile(string $fileName, string $contents): void
+    private function writeAll($handle, string $data, string $fileName): void
     {
-        $writtenBytes = file_put_contents($fileName, $contents);
+        $length = strlen($data);
+        $written = 0;
 
-        if ($writtenBytes !== strlen($contents)) {
-            throw new RuntimeException(sprintf('failed to write matrix.bin "%s".', $fileName));
+        while ($written < $length) {
+            // 初回は元文字列をそのまま渡し、巨大データの不要な複製を避ける。
+            $chunk = $written === 0 ? $data : substr($data, $written);
+            $result = fwrite($handle, $chunk);
+
+            if ($result === false || $result === 0) {
+                throw new RuntimeException(sprintf('failed to write matrix.bin "%s".', $fileName));
+            }
+
+            $written += $result;
+        }
+    }
+
+    /**
+     * 書き込み失敗時の後始末として、作りかけの一時ファイルを残さないよう削除する。
+     */
+    private function removeIfExists(string $fileName): void
+    {
+        if (is_file($fileName)) {
+            unlink($fileName);
         }
     }
 }
