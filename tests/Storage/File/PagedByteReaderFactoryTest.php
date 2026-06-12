@@ -89,6 +89,28 @@ class PagedByteReaderFactoryTest extends TestCase
     }
 
     /**
+     * maxCachedPages を指定した場合でも ByteReader が正しく読み込めることを確認する。
+     */
+    public function testOpenWithMaxCachedPagesReturnsFunctionalReader(): void
+    {
+        $reader = (new PagedByteReaderFactory(4))->open($this->createBinaryFile('abcdefghij'));
+
+        $this->assertInstanceOf(ByteReader::class, $reader);
+        $this->assertSame('cde', $reader->readBytes(2, 3));
+    }
+
+    /**
+     * maxCachedPages を null で生成したファクトリは引数なし生成と同じく既定値を使うことを確認する。
+     */
+    public function testOpenWithNullMaxCachedPagesUsesDefaultBehavior(): void
+    {
+        $reader = (new PagedByteReaderFactory(null))->open($this->createBinaryFile('abcdefghij'));
+
+        $this->assertInstanceOf(ByteReader::class, $reader);
+        $this->assertSame('fgh', $reader->readBytes(5, 3));
+    }
+
+    /**
      * 読み取り元にする一時バイナリファイルを作成する。
      */
     private function createBinaryFile(string $contents): string

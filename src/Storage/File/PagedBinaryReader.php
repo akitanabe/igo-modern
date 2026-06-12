@@ -23,10 +23,11 @@ class PagedBinaryReader implements ByteReader
      *
      * double-array trie の base/chck アクセスは 2 系統のランダムアクセスを交互に行うため、
      * 両系統のホットページが同時にキャッシュに収まることが重要となる。
-     * 8KB × 1,024 ページ ≈ 8MB/reader は L3 キャッシュに収まりやすい実用的な上限であり、
-     * UniDic ファイルサイズ（数百 MB）に対して十分な作業集合を確保できる。
+     * UniDic + 59KB コーパスのスイープ計測では 32→512 ページで解析時間が単調改善し、
+     * 512（8KB × 512 ≈ 4MB/reader）で 1,024 と同等速度に達して飽和した。
+     * 16 ページ以下は急激に劣化する。メモリ最優先なら 32（速度約 1.3 倍劣化・常駐約 1/3）が目安。
      */
-    public const DEFAULT_MAX_CACHED_PAGES = 1024;
+    public const DEFAULT_MAX_CACHED_PAGES = 512;
 
     /** @var resource バイナリ辞書をページ読み込みするためのファイルハンドルを保持する。 */
     private $file;

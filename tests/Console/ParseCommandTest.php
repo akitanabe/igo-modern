@@ -56,6 +56,7 @@ class ParseCommandTest extends TestCase
         $this->assertSame('f', $definition->getOption('file')->getShortcut());
         $this->assertSame('e', $definition->getOption('encoding')->getShortcut());
         $this->assertTrue($definition->hasOption('input-encoding'));
+        $this->assertTrue($definition->hasOption('page-cache'));
     }
 
     /**
@@ -108,6 +109,80 @@ class ParseCommandTest extends TestCase
         ]);
 
         $this->assertSame([[__DIR__, null, null]], $created);
+    }
+
+    /**
+     * --page-cache オプションが Parser factory へ maxCachedPages として渡されることを確認する。
+     */
+    public function testExecutePassesPageCacheToParserFactory(): void
+    {
+        $created = [];
+        $command = new ParseCommand(static function (
+            string $dataDir,
+            ?string $outputEncoding,
+            ?string $inputEncoding,
+            ?int $maxCachedPages,
+        ) use (&$created): Parser {
+            $created[] = [$dataDir, $outputEncoding, $inputEncoding, $maxCachedPages];
+
+            return new StubParser([new Morpheme('A', 'ALPHA', 0)]);
+        });
+
+        $tester = new CommandTester($command);
+        $statusCode = $tester->execute([
+            '-d' => __DIR__,
+            '-i' => 'A',
+            '--page-cache' => '16',
+        ]);
+
+        $this->assertSame(0, $statusCode);
+        $this->assertSame([[__DIR__, null, null, 16]], $created);
+    }
+
+    /**
+     * --page-cache 未指定の場合は maxCachedPages として null が渡され、既定動作になることを確認する。
+     */
+    public function testExecutePassesNullPageCacheWhenOptionIsOmitted(): void
+    {
+        $created = [];
+        $command = new ParseCommand(static function (
+            string $dataDir,
+            ?string $outputEncoding,
+            ?string $inputEncoding,
+            ?int $maxCachedPages,
+        ) use (&$created): Parser {
+            $created[] = [$dataDir, $outputEncoding, $inputEncoding, $maxCachedPages];
+
+            return new StubParser([]);
+        });
+
+        $tester = new CommandTester($command);
+        $tester->execute([
+            '-d' => __DIR__,
+            '-i' => 'A',
+        ]);
+
+        $this->assertSame([[__DIR__, null, null, null]], $created);
+    }
+
+    /**
+     * --page-cache に 0 以下が指定された場合は CLI 入力エラーとして失敗することを確認する。
+     */
+    public function testExecuteFailsWhenPageCacheIsNotPositive(): void
+    {
+        $command = new ParseCommand(function (): Parser {
+            $this->fail('不正な --page-cache が指定された場合、Parser は作成されないべきです。');
+        });
+
+        $tester = new CommandTester($command);
+        $statusCode = $tester->execute([
+            '-d' => __DIR__,
+            '-i' => 'A',
+            '--page-cache' => '0',
+        ]);
+
+        $this->assertSame(1, $statusCode);
+        $this->assertStringContainsString('--page-cache must be a positive integer.', $tester->getDisplay());
     }
 
     /**

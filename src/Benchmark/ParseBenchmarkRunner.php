@@ -16,13 +16,13 @@ use InvalidArgumentException;
  */
 class ParseBenchmarkRunner
 {
-    /** @var callable(string, string, ?string): Parser 辞書ディレクトリ、storage 種別、入力エンコーディングから解析器を作るファクトリを保持する。 */
+    /** @var callable(string, string, ?string, ?int): Parser 辞書ディレクトリ、storage 種別、入力エンコーディング、ページキャッシュ上限から解析器を作るファクトリを保持する。 */
     private $parserFactory;
 
     /**
      * 解析器生成を必須依存として受け取り、CLI とテストで同じ測定処理を使えるようにする。
      *
-     * @param callable(string, string, ?string): Parser $parserFactory
+     * @param callable(string, string, ?string, ?int): Parser $parserFactory
      */
     public function __construct(callable $parserFactory)
     {
@@ -32,7 +32,7 @@ class ParseBenchmarkRunner
     /**
      * 通常利用向けに UTF-8 出力の Igo parser を生成する標準 runner を組み立てる。
      *
-     * inputEncoding の既定値は null（検出あり）とし、従来動作を維持する。
+     * inputEncoding の既定値は null（検出あり）、maxCachedPages の既定値は null（PagedBinaryReader 既定値使用）とし、従来動作を維持する。
      */
     public static function createDefault(): self
     {
@@ -40,9 +40,10 @@ class ParseBenchmarkRunner
             string $dictionary,
             string $storage,
             ?string $inputEncoding,
+            ?int $maxCachedPages,
         ): Parser => Igo::fromStorage(
             match ($storage) {
-                'file' => FileStorage::fromDataDir($dictionary),
+                'file' => FileStorage::fromDataDir($dictionary, $maxCachedPages),
                 'memory' => MemoryStorage::fromDataDir($dictionary),
                 default => throw new InvalidArgumentException('storage must be file or memory.'),
             },
@@ -62,7 +63,12 @@ class ParseBenchmarkRunner
 
         // 辞書ロードによる常駐メモリ増分を、ロード前後の使用量差として測り、辞書コストを独立指標にする。
         $beforeLoad = memory_get_usage();
-        $parser = ($this->parserFactory)($config->dictionary, $config->storage, $config->inputEncoding);
+        $parser = ($this->parserFactory)(
+            $config->dictionary,
+            $config->storage,
+            $config->inputEncoding,
+            $config->maxCachedPages,
+        );
         $dictionaryResidentBytes = max(0, memory_get_usage() - $beforeLoad);
 
         $this->warmUpParser($parser, $text, $config->warmup);
@@ -98,6 +104,10 @@ class ParseBenchmarkRunner
 
         if (!in_array($config->storage, ['file', 'memory'], true)) {
             throw new InvalidArgumentException('storage must be file or memory.');
+        }
+
+        if ($config->maxCachedPages !== null && $config->maxCachedPages < 1) {
+            throw new InvalidArgumentException('maxCachedPages must be a positive integer.');
         }
     }
 

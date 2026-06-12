@@ -6,11 +6,14 @@ namespace IgoModern\Console;
 
 use IgoModern\Igo;
 use IgoModern\Parser;
+use IgoModern\Storage\File\PagedBinaryReader;
 use IgoModern\Storage\FileStorage;
+use InvalidArgumentException;
 use RuntimeException;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\ConsoleOutputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
@@ -21,13 +24,13 @@ class ParseCommand extends Command
     /** コマンド名を Symfony Console アプリケーションへ提供する。 */
     protected static $defaultName = 'parse';
 
-    /** @var callable(string, ?string, ?string): Parser 解析器を遅延生成するファクトリを保持する。 */
+    /** @var callable(string, ?string, ?string, ?int): Parser 解析器を遅延生成するファクトリを保持する。 */
     private $parserFactory;
 
     /**
      * 解析器ファクトリを必須依存として受け取り、解析器生成の差し替えを明示する。
      *
-     * @param callable(string, ?string, ?string): Parser $parserFactory
+     * @param callable(string, ?string, ?string, ?int): Parser $parserFactory
      */
     public function __construct(callable $parserFactory)
     {
@@ -45,7 +48,12 @@ class ParseCommand extends Command
             string $dataDir,
             ?string $outputEncoding,
             ?string $inputEncoding,
-        ): Parser => Igo::fromStorage(FileStorage::fromDataDir($dataDir), $outputEncoding, $inputEncoding));
+            ?int $maxCachedPages,
+        ): Parser => Igo::fromStorage(
+            FileStorage::fromDataDir($dataDir, $maxCachedPages),
+            $outputEncoding,
+            $inputEncoding,
+        ));
     }
 
     /**
@@ -64,6 +72,14 @@ class ParseCommand extends Command
                 null,
                 InputOption::VALUE_REQUIRED,
                 'Fixed input encoding (skips auto-detection).',
+            )
+            ->addOption(
+                'page-cache',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Max cached pages for file storage (positive integer, memory-saving: 32). Default: '
+                . PagedBinaryReader::DEFAULT_MAX_CACHED_PAGES
+                . '.',
             );
     }
 
@@ -72,27 +88,50 @@ class ParseCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $dataDir = $this->requiredStringOption($input, 'dictionary');
+        try {
+            $dataDir = $this->requiredStringOption($input, 'dictionary');
 
-        if (!is_dir($dataDir)) {
-            $output->writeln('dictionary not found.');
+            if (!is_dir($dataDir)) {
+                $output->writeln('dictionary not found.');
+
+                return Command::FAILURE;
+            }
+
+            $text = $this->textFromInput($input, $output);
+
+            if ($text === null) {
+                return Command::FAILURE;
+            }
+
+            $parser = ($this->parserFactory)(
+                $dataDir,
+                $this->outputEncoding($input),
+                $this->inputEncoding($input),
+                $this->pageCacheOption($input),
+            );
+
+            foreach ($parser->parse($text) as $morpheme) {
+                $output->writeln($morpheme->surface . "\t" . $morpheme->feature . ',' . $morpheme->start);
+            }
+
+            return Command::SUCCESS;
+        } catch (InvalidArgumentException $exception) {
+            $this->errorOutput($output)->writeln($exception->getMessage());
 
             return Command::FAILURE;
         }
+    }
 
-        $text = $this->textFromInput($input, $output);
-
-        if ($text === null) {
-            return Command::FAILURE;
+    /**
+     * ConsoleOutputInterface では stderr を優先し、テスト用 output では同じ出力先へエラーを書けるようにする。
+     */
+    private function errorOutput(OutputInterface $output): OutputInterface
+    {
+        if ($output instanceof ConsoleOutputInterface) {
+            return $output->getErrorOutput();
         }
 
-        $parser = ($this->parserFactory)($dataDir, $this->outputEncoding($input), $this->inputEncoding($input));
-
-        foreach ($parser->parse($text) as $morpheme) {
-            $output->writeln($morpheme->surface . "\t" . $morpheme->feature . ',' . $morpheme->start);
-        }
-
-        return Command::SUCCESS;
+        return $output;
     }
 
     /**
@@ -194,5 +233,25 @@ class ParseCommand extends Command
         }
 
         return null;
+    }
+
+    /**
+     * --page-cache オプションで明示されたキャッシュ上限ページ数を検証して返す。
+     *
+     * 未指定なら null を返し PagedBinaryReader の既定値を使う。1 未満が指定された場合は早期エラーにする。
+     */
+    private function pageCacheOption(InputInterface $input): ?int
+    {
+        $value = $this->stringOption($input, 'page-cache');
+
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (!ctype_digit($value) || (int) $value < 1) {
+            throw new InvalidArgumentException('--page-cache must be a positive integer.');
+        }
+
+        return (int) $value;
     }
 }
