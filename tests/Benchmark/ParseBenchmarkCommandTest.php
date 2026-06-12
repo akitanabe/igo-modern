@@ -9,6 +9,7 @@ use IgoModern\Benchmark\ParseBenchmarkCommand;
 use IgoModern\Benchmark\ParseBenchmarkConfig;
 use IgoModern\Benchmark\ParseBenchmarkResult;
 use IgoModern\Benchmark\ParseBenchmarkRunner;
+use IgoModern\Morpheme;
 use IgoModern\Parser;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -66,6 +67,62 @@ class ParseBenchmarkCommandTest extends TestCase
         $this->assertSame('f', $definition->getOption('file')->getShortcut());
         $this->assertSame('o', $definition->getOption('output')->getShortcut());
         $this->assertSame('m', $definition->getOption('morpheme-output')->getShortcut());
+        $this->assertTrue($definition->hasOption('input-encoding'));
+    }
+
+    /**
+     * --input-encoding オプションが runner の parserFactory へ伝搬されることを確認する。
+     */
+    public function testExecutePassesInputEncodingToRunnerParserFactory(): void
+    {
+        $dictionary = $this->temporaryDirectory('igo-bench-dic-');
+        $capturedInputs = [];
+        $runner = new ParseBenchmarkRunner(static function (string $dict, string $storage, ?string $inputEncoding) use (
+            &$capturedInputs,
+        ): Parser {
+            $capturedInputs[] = [$dict, $storage, $inputEncoding];
+
+            return new BenchmarkStubParser([new Morpheme('A', 'ALPHA', 0)]);
+        });
+        $command = new ParseBenchmarkCommand($runner);
+        $tester = new CommandTester($command);
+
+        $tester->execute([
+            '-d' => $dictionary,
+            '--input-encoding' => 'UTF-8',
+            '-i' => 'A',
+            '-r' => '1',
+        ]);
+
+        $this->assertCount(1, $capturedInputs);
+        $this->assertSame('UTF-8', $capturedInputs[0][2]);
+    }
+
+    /**
+     * --input-encoding 未指定時は null が渡り、従来動作（検出あり）になることを確認する。
+     */
+    public function testExecutePassesNullInputEncodingWhenOptionIsOmitted(): void
+    {
+        $dictionary = $this->temporaryDirectory('igo-bench-dic-');
+        $capturedInputs = [];
+        $runner = new ParseBenchmarkRunner(static function (string $dict, string $storage, ?string $inputEncoding) use (
+            &$capturedInputs,
+        ): Parser {
+            $capturedInputs[] = [$dict, $storage, $inputEncoding];
+
+            return new BenchmarkStubParser([new Morpheme('A', 'ALPHA', 0)]);
+        });
+        $command = new ParseBenchmarkCommand($runner);
+        $tester = new CommandTester($command);
+
+        $tester->execute([
+            '-d' => $dictionary,
+            '-i' => 'A',
+            '-r' => '1',
+        ]);
+
+        $this->assertCount(1, $capturedInputs);
+        $this->assertNull($capturedInputs[0][2]);
     }
 
     /**

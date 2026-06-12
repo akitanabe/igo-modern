@@ -13,6 +13,8 @@ class ParseBenchmarkConfig
 
     /**
      * 辞書、反復回数、入力ソースを保持し、runner が同じ条件で測定できるようにする。
+     *
+     * @param ?string $inputEncoding 入力エンコーディングを固定する場合に指定。null なら parse ごとに検出する。
      */
     public function __construct(
         public string $dictionary,
@@ -22,6 +24,7 @@ class ParseBenchmarkConfig
         public ?string $text = null,
         public ?string $file = null,
         public string $storage = 'file',
+        public ?string $inputEncoding = null,
     ) {}
 
     /**

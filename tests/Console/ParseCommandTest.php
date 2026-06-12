@@ -55,6 +55,59 @@ class ParseCommandTest extends TestCase
         $this->assertSame('i', $definition->getOption('input')->getShortcut());
         $this->assertSame('f', $definition->getOption('file')->getShortcut());
         $this->assertSame('e', $definition->getOption('encoding')->getShortcut());
+        $this->assertTrue($definition->hasOption('input-encoding'));
+    }
+
+    /**
+     * --input-encoding オプションが Parser factory へ inputEncoding として渡されることを確認する。
+     */
+    public function testExecutePassesInputEncodingToParserFactory(): void
+    {
+        $created = [];
+        $command = new ParseCommand(static function (
+            string $dataDir,
+            ?string $outputEncoding,
+            ?string $inputEncoding,
+        ) use (&$created): Parser {
+            $created[] = [$dataDir, $outputEncoding, $inputEncoding];
+
+            return new StubParser([new Morpheme('A', 'ALPHA', 0)]);
+        });
+
+        $tester = new CommandTester($command);
+        $statusCode = $tester->execute([
+            '-d' => __DIR__,
+            '-i' => 'A',
+            '--input-encoding' => 'UTF-8',
+        ]);
+
+        $this->assertSame(0, $statusCode);
+        $this->assertSame([[__DIR__, null, 'UTF-8']], $created);
+    }
+
+    /**
+     * --input-encoding を未指定の場合は inputEncoding として null が渡され、従来動作になることを確認する。
+     */
+    public function testExecutePassesNullInputEncodingWhenOptionIsOmitted(): void
+    {
+        $created = [];
+        $command = new ParseCommand(static function (
+            string $dataDir,
+            ?string $outputEncoding,
+            ?string $inputEncoding,
+        ) use (&$created): Parser {
+            $created[] = [$dataDir, $outputEncoding, $inputEncoding];
+
+            return new StubParser([]);
+        });
+
+        $tester = new CommandTester($command);
+        $tester->execute([
+            '-d' => __DIR__,
+            '-i' => 'A',
+        ]);
+
+        $this->assertSame([[__DIR__, null, null]], $created);
     }
 
     /**

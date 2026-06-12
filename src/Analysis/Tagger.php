@@ -20,8 +20,11 @@ class Tagger
     /** @var list<ViterbiNode> 文頭ノードだけを持つ初期候補列を保持する。 */
     private static array $bosNodes = [];
 
-    /** 入力文字列から検出した文字エンコーディングを保持する。 */
+    /** 入力文字列のエンコーディングを保持する。固定指定時は検出をスキップする。 */
     private string $inputEncoding = 'UTF-8';
+
+    /** 固定された入力エンコーディング。null の場合は parse ごとに mb_detect_encoding で検出する。 */
+    private ?string $fixedInputEncoding;
 
     /** 辞書バイナリ内の UTF-16 バイトオーダーを保持する。 */
     private string $dictionaryEncoding;
@@ -38,12 +41,15 @@ class Tagger
 
     /**
      * 事前に読み込まれた解析用辞書と出力エンコーディングを保持する。
+     *
+     * @param ?string $inputEncoding 入力エンコーディングを固定する場合に指定。null なら parse ごとに検出する。
      */
     public function __construct(
         private WordDictionary $wordDic,
         private UnknownWordDictionary $unknown,
         private ConnectionMatrix $matrix,
         private ?string $outputEncoding = null,
+        ?string $inputEncoding = null,
     ) {
         if (self::$bosNodes === []) {
             self::$bosNodes = [ViterbiNode::makeBOSEOS()];
@@ -56,18 +62,30 @@ class Tagger
         }
 
         $this->dictionaryEncoding = self::detectDictionaryEncoding();
+        $this->fixedInputEncoding = $inputEncoding;
+
+        // 固定エンコーディングが指定されている場合は即座に inputEncoding プロパティへ設定しておく。
+        if ($inputEncoding !== null) {
+            $this->inputEncoding = $inputEncoding;
+        }
     }
 
     /**
      * 辞書ストレージ抽象から解析器を構築する主入口。
+     *
+     * @param ?string $inputEncoding 入力エンコーディングを固定する場合に指定。null なら parse ごとに検出する。
      */
-    public static function fromStorage(DictionaryStorage $storage, ?string $outputEncoding = null): self
-    {
+    public static function fromStorage(
+        DictionaryStorage $storage,
+        ?string $outputEncoding = null,
+        ?string $inputEncoding = null,
+    ): self {
         return new self(
             $storage->wordDictionary(),
             $storage->unknownWordDictionary(),
             $storage->connectionMatrix(),
             $outputEncoding,
+            $inputEncoding,
         );
     }
 
@@ -190,12 +208,17 @@ class Tagger
     }
 
     /**
-     * 入力エンコーディングを検出し、辞書検索に使う UTF-16 バイト列へ変換する。
+     * 入力エンコーディングを確定し、辞書検索に使う UTF-16 バイト列へ変換する。
+     *
+     * 固定エンコーディングが指定されている場合は検出をスキップし、指定値をそのまま使う。
+     * 未指定の場合は従来どおり mb_detect_encoding で検出する。
      */
     private function prepareInput(string $text): string
     {
-        $detectedEncoding = mb_detect_encoding($text, 'ASCII,JIS,UTF-8,EUC-JP,SJIS');
-        $this->inputEncoding = $detectedEncoding === false ? 'UTF-8' : $detectedEncoding;
+        if ($this->fixedInputEncoding === null) {
+            $detectedEncoding = mb_detect_encoding($text, 'ASCII,JIS,UTF-8,EUC-JP,SJIS');
+            $this->inputEncoding = $detectedEncoding === false ? 'UTF-8' : $detectedEncoding;
+        }
 
         $utf16 = mb_convert_encoding($text, $this->dictionaryEncoding, $this->inputEncoding);
 

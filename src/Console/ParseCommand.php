@@ -21,13 +21,13 @@ class ParseCommand extends Command
     /** コマンド名を Symfony Console アプリケーションへ提供する。 */
     protected static $defaultName = 'parse';
 
-    /** @var callable(string, ?string): Parser 解析器を遅延生成するファクトリを保持する。 */
+    /** @var callable(string, ?string, ?string): Parser 解析器を遅延生成するファクトリを保持する。 */
     private $parserFactory;
 
     /**
      * 解析器ファクトリを必須依存として受け取り、解析器生成の差し替えを明示する。
      *
-     * @param callable(string, ?string): Parser $parserFactory
+     * @param callable(string, ?string, ?string): Parser $parserFactory
      */
     public function __construct(callable $parserFactory)
     {
@@ -41,10 +41,11 @@ class ParseCommand extends Command
      */
     public static function createDefault(): self
     {
-        return new self(static fn(string $dataDir, ?string $outputEncoding): Parser => Igo::fromStorage(
-            FileStorage::fromDataDir($dataDir),
-            $outputEncoding,
-        ));
+        return new self(static fn(
+            string $dataDir,
+            ?string $outputEncoding,
+            ?string $inputEncoding,
+        ): Parser => Igo::fromStorage(FileStorage::fromDataDir($dataDir), $outputEncoding, $inputEncoding));
     }
 
     /**
@@ -57,7 +58,13 @@ class ParseCommand extends Command
             ->addOption('dictionary', 'd', InputOption::VALUE_REQUIRED, 'Dictionary directory.')
             ->addOption('input', 'i', InputOption::VALUE_REQUIRED, 'Inline text to parse.')
             ->addOption('file', 'f', InputOption::VALUE_REQUIRED, 'Text file to parse.')
-            ->addOption('encoding', 'e', InputOption::VALUE_REQUIRED, 'Output encoding.');
+            ->addOption('encoding', 'e', InputOption::VALUE_REQUIRED, 'Output encoding.')
+            ->addOption(
+                'input-encoding',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Fixed input encoding (skips auto-detection).',
+            );
     }
 
     /**
@@ -79,7 +86,7 @@ class ParseCommand extends Command
             return Command::FAILURE;
         }
 
-        $parser = ($this->parserFactory)($dataDir, $this->outputEncoding($input));
+        $parser = ($this->parserFactory)($dataDir, $this->outputEncoding($input), $this->inputEncoding($input));
 
         foreach ($parser->parse($text) as $morpheme) {
             $output->writeln($morpheme->surface . "\t" . $morpheme->feature . ',' . $morpheme->start);
@@ -167,6 +174,20 @@ class ParseCommand extends Command
     private function outputEncoding(InputInterface $input): ?string
     {
         $encoding = $input->getOption('encoding');
+
+        if (is_string($encoding) && $encoding !== '') {
+            return $encoding;
+        }
+
+        return null;
+    }
+
+    /**
+     * CLI オプションで明示された入力エンコーディング固定値を任意設定として取り出す。
+     */
+    private function inputEncoding(InputInterface $input): ?string
+    {
+        $encoding = $input->getOption('input-encoding');
 
         if (is_string($encoding) && $encoding !== '') {
             return $encoding;

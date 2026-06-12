@@ -90,6 +90,21 @@ class IgoTest extends TestCase
     }
 
     /**
+     * Igo::fromStorage に inputEncoding を指定した場合、Tagger へ伝搬して EUC-JP 入力を正しく解析することを確認する。
+     */
+    public function testFromStoragePassesInputEncodingToTagger(): void
+    {
+        $igo = Igo::fromStorage(FileStorage::fromDataDir($this->createDictionaryDirectory(2)), 'UTF-8', 'EUC-JP');
+
+        $eucJpText = mb_convert_encoding('AB', 'EUC-JP', 'UTF-8');
+        $result = $igo->parse($eucJpText);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('AB', $result[0]->surface);
+        $this->assertSame('ALPHA', $result[0]->feature);
+    }
+
+    /**
      * 構築入口が Storage に一本化されたため、読み込み失敗は FileStorage::fromDataDir が例外で表すことを確認する。
      */
     public function testFileStorageThrowsWhenDictionaryCannotBeLoaded(): void

@@ -85,6 +85,82 @@ class TaggerTest extends TestCase
     }
 
     /**
+     * inputEncoding='UTF-8' を固定指定した場合、検出ありと完全一致した解析結果を返すことを確認する。
+     */
+    public function testParseWithFixedUtf8EncodingMatchesDetectionResult(): void
+    {
+        $directory = $this->createDictionaryDirectory(2);
+        $defaultTagger = Tagger::fromStorage(FileStorage::fromDataDir($directory), null);
+        $fixedTagger = Tagger::fromStorage(FileStorage::fromDataDir($directory), null, 'UTF-8');
+
+        $defaultResult = $defaultTagger->parse('AB');
+        $fixedResult = $fixedTagger->parse('AB');
+
+        $this->assertSame(
+            array_map(static fn(Morpheme $m): array => [$m->surface, $m->feature, $m->start], $defaultResult),
+            array_map(static fn(Morpheme $m): array => [$m->surface, $m->feature, $m->start], $fixedResult),
+        );
+    }
+
+    /**
+     * inputEncoding 固定時に wakati の結果も検出ありと完全一致することを確認する。
+     */
+    public function testWakatiWithFixedUtf8EncodingMatchesDetectionResult(): void
+    {
+        $directory = $this->createDictionaryDirectory(1);
+        $defaultTagger = Tagger::fromStorage(FileStorage::fromDataDir($directory), null);
+        $fixedTagger = Tagger::fromStorage(FileStorage::fromDataDir($directory), null, 'UTF-8');
+
+        $this->assertSame($defaultTagger->wakati('A B'), $fixedTagger->wakati('A B'));
+    }
+
+    /**
+     * EUC-JP 入力を固定エンコーディング指定で解析し、UTF-8 出力を明示した場合に正しく変換されることを確認する。
+     */
+    public function testParseWithFixedEucJpEncodingConvertsToUtf8Output(): void
+    {
+        $directory = $this->createDictionaryDirectory(2);
+        $tagger = Tagger::fromStorage(FileStorage::fromDataDir($directory), 'UTF-8', 'EUC-JP');
+
+        $eucJpText = mb_convert_encoding('AB', 'EUC-JP', 'UTF-8');
+        $result = $tagger->parse($eucJpText);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('AB', $result[0]->surface);
+        $this->assertSame('ALPHA', $result[0]->feature);
+    }
+
+    /**
+     * SJIS 入力を固定エンコーディング指定で解析し、UTF-8 出力を明示した場合に正しく変換されることを確認する。
+     */
+    public function testParseWithFixedSjisEncodingConvertsToUtf8Output(): void
+    {
+        $directory = $this->createDictionaryDirectory(2);
+        $tagger = Tagger::fromStorage(FileStorage::fromDataDir($directory), 'UTF-8', 'SJIS');
+
+        $sjisText = mb_convert_encoding('AB', 'SJIS', 'UTF-8');
+        $result = $tagger->parse($sjisText);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('AB', $result[0]->surface);
+        $this->assertSame('ALPHA', $result[0]->feature);
+    }
+
+    /**
+     * inputEncoding 未指定（null）では従来どおり mb_detect_encoding が走ることを確認する（後方互換）。
+     */
+    public function testParseDefaultBehaviorDetectsEncoding(): void
+    {
+        $directory = $this->createDictionaryDirectory(2);
+        $tagger = Tagger::fromStorage(FileStorage::fromDataDir($directory), null);
+
+        $result = $tagger->parse('AB');
+
+        $this->assertCount(1, $result);
+        $this->assertSame('AB', $result[0]->surface);
+    }
+
+    /**
      * wakati が空白カテゴリを形態素として出力せず、非空白候補の表層形だけを返すことを確認する。
      */
     public function testWakatiSkipsSpaceNodesAndReturnsSurfaces(): void

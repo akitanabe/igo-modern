@@ -74,6 +74,12 @@ class ParseBenchmarkCommand extends Command
                 'm',
                 InputOption::VALUE_REQUIRED,
                 'Write morpheme output to a file. Use {datetime} for Ymd-His timestamp.',
+            )
+            ->addOption(
+                'input-encoding',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Fixed input encoding (skips auto-detection). Default: auto-detect.',
             );
     }
 
@@ -161,7 +167,22 @@ class ParseBenchmarkCommand extends Command
             $this->stringOption($input, 'text'),
             $this->stringOption($input, 'file'),
             $this->storageOption($input),
+            $this->inputEncodingOption($input),
         );
+    }
+
+    /**
+     * CLI オプションで明示された入力エンコーディング固定値を任意設定として取り出す。
+     */
+    private function inputEncodingOption(InputInterface $input): ?string
+    {
+        $encoding = $this->stringOption($input, 'input-encoding');
+
+        if ($encoding !== null && $encoding !== '') {
+            return $encoding;
+        }
+
+        return null;
     }
 
     /**
