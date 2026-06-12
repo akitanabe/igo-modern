@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IgoModern\Analysis;
 
+use IgoModern\Dictionary\Binary\BinaryConnectionMatrix;
 use IgoModern\Dictionary\Contract\ConnectionMatrix;
 use IgoModern\Dictionary\Contract\UnknownWordDictionary;
 use IgoModern\Dictionary\Contract\WordDictionary;
@@ -26,6 +27,16 @@ class Tagger
     private string $dictionaryEncoding;
 
     /**
+     * 常駐メモリ時に連接コストの生配列を保持する。Lazy 時は null で fallback 経路を使う。
+     *
+     * @var list<int>|null
+     */
+    private ?array $rawLinkCosts = null;
+
+    /** 連接コスト生配列の添字算出に使う行幅（左文脈 ID の総数）を保持する。 */
+    private int $linkCostLeftSize = 0;
+
+    /**
      * 事前に読み込まれた解析用辞書と出力エンコーディングを保持する。
      */
     public function __construct(
@@ -36,6 +47,12 @@ class Tagger
     ) {
         if (self::$bosNodes === []) {
             self::$bosNodes = [ViterbiNode::makeBOSEOS()];
+        }
+
+        // 常駐メモリ辞書なら生配列と行幅を一度だけ取り出し、ホットパスの直接添字参照に備える。
+        if ($matrix instanceof BinaryConnectionMatrix) {
+            $this->rawLinkCosts = $matrix->rawCosts();
+            $this->linkCostLeftSize = $matrix->leftSize();
         }
 
         $this->dictionaryEncoding = self::detectDictionaryEncoding();
@@ -95,6 +112,9 @@ class Tagger
     /**
      * 候補ノードの直前候補から最小連接コストの経路を選び、ノードの累積コストへ反映する。
      *
+     * 常駐メモリ辞書なら生配列直接参照の fast 版、Lazy なら linkCost 呼び出しの fallback 版へ
+     * 分岐する。分岐はメソッド先頭で 1 回だけ行い、最内ループには instanceof / null 比較を持ち込まない。
+     *
      * @param list<ViterbiNode> $previousNodes
      */
     public function setMincostNode(ViterbiNode $node, array $previousNodes): ViterbiNode
@@ -103,6 +123,53 @@ class Tagger
             throw new RuntimeException('previous nodes must not be empty.');
         }
 
+        if ($this->rawLinkCosts !== null) {
+            return $this->setMincostNodeFast($node, $previousNodes, $this->rawLinkCosts);
+        }
+
+        return $this->setMincostNodeFallback($node, $previousNodes);
+    }
+
+    /**
+     * 常駐メモリの連接コスト生配列を直接添字参照して最小コスト経路を選ぶ fast 版。
+     *
+     * fallback 版と完全に同一の結果（選択ノード・累積コスト）を返すことを不変条件とする。
+     *
+     * @param list<ViterbiNode> $previousNodes
+     * @param list<int> $costs
+     */
+    private function setMincostNodeFast(ViterbiNode $node, array $previousNodes, array $costs): ViterbiNode
+    {
+        // fallback の linkCost($prev->rightId, $node->leftId) は内部で get($node->leftId * leftSize + $prev->rightId)
+        // を引く。直接添字でも同じ並び（行 = node->leftId、列 = prev->rightId）を再現する。
+        $rowBase = $node->leftId * $this->linkCostLeftSize;
+
+        $bestPreviousNode = $previousNodes[0];
+        $minCost = $bestPreviousNode->cost + $costs[$rowBase + $bestPreviousNode->rightId];
+
+        for ($i = 1, $count = count($previousNodes); $i < $count; $i++) {
+            $previousNode = $previousNodes[$i];
+            $cost = $previousNode->cost + $costs[$rowBase + $previousNode->rightId];
+
+            if ($cost < $minCost) {
+                $minCost = $cost;
+                $bestPreviousNode = $previousNode;
+            }
+        }
+
+        $node->prev = $bestPreviousNode;
+        $node->cost += $minCost;
+
+        return $node;
+    }
+
+    /**
+     * 連接コストを linkCost() 経由で参照する fallback 版（FileStorage / Lazy 経路）。
+     *
+     * @param list<ViterbiNode> $previousNodes
+     */
+    private function setMincostNodeFallback(ViterbiNode $node, array $previousNodes): ViterbiNode
+    {
         $bestPreviousNode = $previousNodes[0];
         $minCost = $bestPreviousNode->cost + $this->matrix->linkCost($bestPreviousNode->rightId, $node->leftId);
 

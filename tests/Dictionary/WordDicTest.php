@@ -113,6 +113,31 @@ class WordDicTest extends TestCase
     }
 
     /**
+     * 常駐メモリ（fast 版）と Lazy（fallback 版）で callWordRange / search が同一の候補ノード列を返すことを確認する。
+     *
+     * 生配列直接参照と get() 経由が ViterbiNode の属性・順序まで完全一致することを固定し、不変条件を保証する。
+     */
+    public function testFastAndFallbackWordRangeAndSearchAreEquivalent(): void
+    {
+        $resident = FileBinaryDictionaryLoader::forMemoryStorage(
+            $this->createDictionaryDirectory(),
+        )->loadWordDictionary();
+        $lazy = FileBinaryDictionaryLoader::forFileStorage($this->createDictionaryDirectory())->loadWordDictionary();
+
+        $residentRange = new CapturingWordDicCallback();
+        $lazyRange = new CapturingWordDicCallback();
+        $resident->callWordRange(0, 5, 4, true, $residentRange);
+        $lazy->callWordRange(0, 5, 4, true, $lazyRange);
+        $this->assertSame($lazyRange->nodeSummaries(), $residentRange->nodeSummaries());
+
+        $residentSearch = new CapturingWordDicCallback();
+        $lazySearch = new CapturingWordDicCallback();
+        $resident->search([10, 20, 30, 99], 0, $residentSearch);
+        $lazy->search([10, 20, 30, 99], 0, $lazySearch);
+        $this->assertSame($lazySearch->nodeSummaries(), $residentSearch->nodeSummaries());
+    }
+
+    /**
      * loader へ注入した factory が word2id / word.dat / word.ary.idx / word.inf 全てに対し open され、
      * Searcher / WordDataReader / word.ary.idx reader / 本体ストリームへ漏れなく伝播することを確認する。
      */

@@ -6,6 +6,7 @@ namespace IgoModern\Binary;
 
 use IgoModern\Binary\Contract\IntArray;
 use IgoModern\Binary\Contract\IntArrayReader;
+use IgoModern\Binary\Contract\RawIntValues;
 use RuntimeException;
 
 /**
@@ -13,8 +14,9 @@ use RuntimeException;
  *
  * 内部表現は 0 始まり連続添字の通常 PHP 配列（packed list）とする。
  * SplFixedArray の ArrayAccess 経由アクセスより直接添字参照が高速なため、解析ホットパスの最適化を目的に変更した。
+ * RawIntValues を実装し、ホットパスへ生配列を公開してメソッド呼び出しを排除できるようにする。
  */
-class IntMemoryArray implements IntArray
+class IntMemoryArray implements IntArray, RawIntValues
 {
     /** @var list<int> 添字指定で返す固定件数の int 値を 0 始まり連続添字の配列で保持する。 */
     protected array $array;
@@ -57,5 +59,15 @@ class IntMemoryArray implements IntArray
         }
 
         return $value;
+    }
+
+    /**
+     * 内部に保持した生 PHP 配列をそのまま返し、ホットパスでの直接添字参照を可能にする。
+     *
+     * copy-on-write のため戻り値の保持ではコピーは発生せず、添字参照のみなら最後までコピーは起きない。
+     */
+    public function values(): array
+    {
+        return $this->array;
     }
 }
