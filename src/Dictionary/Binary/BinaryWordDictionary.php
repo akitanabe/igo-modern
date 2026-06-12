@@ -51,6 +51,13 @@ class BinaryWordDictionary implements WordDictionary
     private ?array $rawRightIds;
 
     /**
+     * 共通接頭辞通知を単語候補通知へ変換する caller を 1 つだけ保持し、search ごとに使い回す。
+     *
+     * 開始位置ごとの new を避けるため、search では setCallback で $fn を差し替えるだけにする。
+     */
+    private WordDicCallbackCaller $callbackCaller;
+
+    /**
      * 事前に読み込まれた単語辞書の構成要素を保持する。
      */
     public function __construct(
@@ -80,6 +87,9 @@ class BinaryWordDictionary implements WordDictionary
             $this->rawLeftIds = null;
             $this->rawRightIds = null;
         }
+
+        // 再利用する caller を 1 つだけ生成しておき、以後は setCallback で $fn を差し替える。
+        $this->callbackCaller = new WordDicCallbackCaller($this);
     }
 
     /**
@@ -89,7 +99,9 @@ class BinaryWordDictionary implements WordDictionary
      */
     public function search(array $text, int $start, WordDicCallback $fn): void
     {
-        $this->trie->eachCommonPrefix($text, $start, new WordDicCallbackCaller($this, $fn));
+        // 開始位置ごとに caller を new せず、保持済みインスタンスへ $fn を差し替えて再利用する。
+        $this->callbackCaller->setCallback($fn);
+        $this->trie->eachCommonPrefix($text, $start, $this->callbackCaller);
     }
 
     /**
