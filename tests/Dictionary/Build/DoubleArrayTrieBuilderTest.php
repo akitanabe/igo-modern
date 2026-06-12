@@ -251,6 +251,95 @@ class DoubleArrayTrieBuilderTest extends TestCase
     }
 
     /**
+     * 長い単一路キー（20000文字の 'a' 繰り返し）が tail に正しく圧縮され、Searcher で読めることを確認する。
+     *
+     * compressedTail() を再帰から反復実装へ書き換えても tail suffix の内容と
+     * Searcher の検索結果が変わらないことを保証する。
+     */
+    public function testBuildCompressesVeryLongSinglePathKeyIntoTail(): void
+    {
+        $longKey = str_repeat('a', 20_000);
+        $fileName = $this->createTemporaryFile();
+        (new DoubleArrayTrieBuilder())->build([
+            $longKey => 0,
+            'b' => 1,
+        ], $fileName);
+
+        $searcher = FileTrieLoader::forBuild()->load($fileName);
+        $longMatch = new CapturingPrefixCallback();
+        $shortMatch = new CapturingPrefixCallback();
+
+        $searcher->eachCommonPrefix($this->utf16CodeUnits($longKey), 0, $longMatch);
+        $searcher->eachCommonPrefix($this->utf16CodeUnits('b'), 0, $shortMatch);
+
+        // tail には 20000 文字（UTF-16LE code unit = 20000 個）分の suffix が入るはず
+        $this->assertGreaterThan(0, $this->tailSize($fileName));
+        $this->assertSame([['start' => 0, 'offset' => 20_000, 'id' => 0]], $longMatch->matches);
+        $this->assertSame([['start' => 0, 'offset' => 1, 'id' => 1]], $shortMatch->matches);
+    }
+
+    /**
+     * 分岐と単一路が混在するキー集合の word2id バイナリが、旧実装との byte 一致を保つことを確認する。
+     *
+     * nodesNeedingBase() を反復実装へ書き換えても DFS 前順の訪問順が維持され、
+     * 同じ base 割り当て・同じバイナリが生成されることを保証する。
+     */
+    public function testBuildMixedBranchAndSinglePathProducesSameBinaryAsReference(): void
+    {
+        // 分岐あり (ca→cat/car) + 単一路 (do→dog) を含む既存 golden fixture と同じキー集合
+        $keys = ['cat' => 0, 'car' => 1, 'dog' => 2];
+
+        $fileName = $this->createTemporaryFile();
+        (new DoubleArrayTrieBuilder())->build($keys, $fileName);
+
+        $actual = file_get_contents($fileName);
+        $golden = file_get_contents(__DIR__ . '/fixtures/word2id-golden.bin');
+        $this->assertIsString($actual);
+        $this->assertIsString($golden);
+        // リファクタ前後で byte-for-byte 一致することを保証する
+        $this->assertSame(md5($golden), md5($actual));
+    }
+
+    /**
+     * 単一路の途中ノードが id を持つ場合（分岐なしの終端ノード）は tail 圧縮される、
+     * 途中ノードが id を持ちかつ子もある場合は tail 圧縮されないことを確認する。
+     *
+     * compressedTail() の戻り値セマンティクスが反復実装でも正確に保たれることを検証する。
+     */
+    public function testBuildHandlesIdNodeWithAndWithoutChildren(): void
+    {
+        // 'ab' が終端、'abc' も終端 → 'ab' は id+children あり → tail 圧縮不可 → DA ノード
+        // 'a' で分岐する場合: root→a→b(id=0, children=[c])→c(id=1, children=[])
+        $fileName = $this->createTemporaryFile();
+        (new DoubleArrayTrieBuilder())->build([
+            'ab' => 0,
+            'abc' => 1,
+        ], $fileName);
+
+        $searcher = FileTrieLoader::forBuild()->load($fileName);
+        $ab = new CapturingPrefixCallback();
+        $abc = new CapturingPrefixCallback();
+
+        $searcher->eachCommonPrefix($this->utf16CodeUnits('abcd'), 0, $ab);
+        $searcher->eachCommonPrefix($this->utf16CodeUnits('abc'), 0, $abc);
+
+        $this->assertSame(
+            [
+                ['start' => 0, 'offset' => 2, 'id' => 0],
+                ['start' => 0, 'offset' => 3, 'id' => 1],
+            ],
+            $ab->matches,
+        );
+        $this->assertSame(
+            [
+                ['start' => 0, 'offset' => 2, 'id' => 0],
+                ['start' => 0, 'offset' => 3, 'id' => 1],
+            ],
+            $abc->matches,
+        );
+    }
+
+    /**
      * word2id ヘッダから tail 領域の code unit 数を取り出す。
      */
     private function tailSize(string $fileName): int

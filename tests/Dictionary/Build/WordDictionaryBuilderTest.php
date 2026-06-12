@@ -11,6 +11,7 @@ use IgoModern\Dictionary\WordDicCallback;
 use IgoModern\Storage\Loader\FileBinaryDictionaryLoader;
 use IgoModern\Storage\Loader\FileTrieLoader;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 use RuntimeException;
 
 /**
@@ -164,6 +165,144 @@ class WordDictionaryBuilderTest extends TestCase
         $this->expectExceptionMessage('noun.csv line 1 word ids must be non-negative.');
 
         (new WordDictionaryBuilder())->build($outputDirectory, $inputDirectory, 'UTF-8', ',');
+    }
+
+    /**
+     * packInts が空配列に対して空文字列を返すことを確認する。
+     */
+    public function testPackIntsReturnsEmptyStringForEmptyArray(): void
+    {
+        $builder = new WordDictionaryBuilder();
+        $method = (new ReflectionClass($builder))->getMethod('packInts');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($builder, []);
+
+        $this->assertSame('', $result);
+    }
+
+    /**
+     * packInts が 1 要素の配列に対して 4 バイトの正しいバイナリを返すことを確認する。
+     */
+    public function testPackIntsReturnsFourBytesForSingleElement(): void
+    {
+        $builder = new WordDictionaryBuilder();
+        $method = (new ReflectionClass($builder))->getMethod('packInts');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($builder, [42]);
+
+        $this->assertSame(pack('l', 42), $result);
+    }
+
+    /**
+     * packInts が負値・ゼロ・INT_MAX・INT_MIN を含む配列に対して、
+     * 要素ごと pack('l') と同一のバイト列を返すことを確認する。
+     */
+    public function testPackIntsMatchesNaiveImplementationForEdgeCaseValues(): void
+    {
+        $values = [0, 1, -1, 2_147_483_647, -2_147_483_648];
+        $builder = new WordDictionaryBuilder();
+        $method = (new ReflectionClass($builder))->getMethod('packInts');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($builder, $values);
+
+        $expected = '';
+        foreach ($values as $v) {
+            $expected .= pack('l', $v);
+        }
+        $this->assertSame($expected, $result);
+    }
+
+    /**
+     * packInts が 10,001 要素（チャンク境界をまたぐ）の配列に対して、
+     * 要素ごと pack('l') の素朴実装と完全一致するバイト列を返すことを確認する。
+     */
+    public function testPackIntsByteOutputMatchesNaiveImplementationAcrossChunkBoundary(): void
+    {
+        $values = range(0, 10_000);
+        $builder = new WordDictionaryBuilder();
+        $method = (new ReflectionClass($builder))->getMethod('packInts');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($builder, $values);
+
+        $expected = '';
+        foreach ($values as $v) {
+            $expected .= pack('l', $v);
+        }
+        $this->assertSame($expected, $result);
+        $this->assertSame(10_001 * 4, strlen($result));
+    }
+
+    /**
+     * packShorts が空配列に対して空文字列を返すことを確認する。
+     */
+    public function testPackShortsReturnsEmptyStringForEmptyArray(): void
+    {
+        $builder = new WordDictionaryBuilder();
+        $method = (new ReflectionClass($builder))->getMethod('packShorts');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($builder, []);
+
+        $this->assertSame('', $result);
+    }
+
+    /**
+     * packShorts が 1 要素の配列に対して 2 バイトの正しいバイナリを返すことを確認する。
+     */
+    public function testPackShortsReturnsTwoBytesForSingleElement(): void
+    {
+        $builder = new WordDictionaryBuilder();
+        $method = (new ReflectionClass($builder))->getMethod('packShorts');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($builder, [-1]);
+
+        $this->assertSame(pack('s', -1), $result);
+    }
+
+    /**
+     * packShorts が -32768・-1・0・32767 の境界値を含む配列に対して、
+     * 要素ごと pack('s') と同一のバイト列を返すことを確認する。
+     */
+    public function testPackShortsMatchesNaiveImplementationForEdgeCaseValues(): void
+    {
+        $values = [-32_768, -32_767, -1, 0, 1, 32_766, 32_767];
+        $builder = new WordDictionaryBuilder();
+        $method = (new ReflectionClass($builder))->getMethod('packShorts');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($builder, $values);
+
+        $expected = '';
+        foreach ($values as $v) {
+            $expected .= pack('s', $v);
+        }
+        $this->assertSame($expected, $result);
+    }
+
+    /**
+     * packShorts が 10,001 要素（チャンク境界をまたぐ）の配列に対して、
+     * 要素ごと pack('s') の素朴実装と完全一致するバイト列を返すことを確認する。
+     */
+    public function testPackShortsByteOutputMatchesNaiveImplementationAcrossChunkBoundary(): void
+    {
+        $values = array_map(static fn(int $i): int => $i % 32_768, range(0, 10_000));
+        $builder = new WordDictionaryBuilder();
+        $method = (new ReflectionClass($builder))->getMethod('packShorts');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($builder, $values);
+
+        $expected = '';
+        foreach ($values as $v) {
+            $expected .= pack('s', $v);
+        }
+        $this->assertSame($expected, $result);
+        $this->assertSame(10_001 * 2, strlen($result));
     }
 
     /**
