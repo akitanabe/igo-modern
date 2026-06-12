@@ -19,12 +19,14 @@ use IgoModern\Binary\IntMemoryArray;
 use IgoModern\Binary\ShortDynamicArray;
 use IgoModern\Binary\ShortMemoryArray;
 use RuntimeException;
+use SplFixedArray;
 
 /**
  * 辞書バイナリを現在位置から順に読み、配列実装の入力元にもなるストリーム。
  *
  * ファイルシステム操作と実体化方式（Lazy / Resident）の知識を Storage 内へ閉じ、辞書クラスへは
  * InputStream 契約だけを公開する。Memory 配列の fromReader 用に *ArrayReader も実装する。
+ * Resident 実体化では中間 list を経由せずチャンク単位で SplFixedArray へ直接詰め込み、ピークメモリを抑える。
  */
 final class FileInputStream implements InputStream, IntArrayReader, ShortArrayReader, CharArrayReader
 {
@@ -44,10 +46,19 @@ final class FileInputStream implements InputStream, IntArrayReader, ShortArrayRe
     private ?ByteReaderFactory $byteReaderFactory;
 
     /**
+     * Resident 実体化でチャンク読み込みする際の 1 チャンクあたりの要素数を保持する。
+     *
+     * デフォルト 1_000_000 はピークメモリを「SplFixedArray + 1 チャンク分」に抑える経験値。
+     * テスト時は小さい値を注入してチャンク境界の正しさを確認できる。
+     */
+    private int $chunkSize;
+
+    /**
      * 開かれたファイルハンドルと配列インスタンスの実体化方式・reader ファクトリを保持する。
      *
      * 実体化方式の既定は Lazy。PHP 8.0 ではオブジェクト定数を既定値に置けないため null で受け取り正規化する。
      * factory は sequential helper では不要なため null を許し、Lazy 配列生成時にガードで必須化する。
+     * chunkSize は Resident チャンク読み込みの要素数単位。null の場合は 1_000_000 を使う。
      *
      * @param resource $file
      */
@@ -56,20 +67,25 @@ final class FileInputStream implements InputStream, IntArrayReader, ShortArrayRe
         string $fileName,
         ?ArrayMaterialization $materialization = null,
         ?ByteReaderFactory $byteReaderFactory = null,
+        ?int $chunkSize = null,
     ) {
         $this->file = $file;
         $this->fileName = $fileName;
         $this->materialization = $materialization ?? ArrayMaterialization::Lazy();
         $this->byteReaderFactory = $byteReaderFactory;
+        $this->chunkSize = $chunkSize ?? 1_000_000;
     }
 
     /**
      * 読み取り対象ファイルを開き、順次読み込み stream を作る。
+     *
+     * chunkSize は Resident チャンク読み込みの要素数単位。テスト時に小さい値を渡してチャンク境界を検証できる。
      */
     public static function fromFile(
         string $fileName,
         ?ArrayMaterialization $materialization = null,
         ?ByteReaderFactory $byteReaderFactory = null,
+        ?int $chunkSize = null,
     ): self {
         $file = fopen($fileName, 'rb');
 
@@ -77,7 +93,7 @@ final class FileInputStream implements InputStream, IntArrayReader, ShortArrayRe
             throw new RuntimeException('dictionary reading failed.');
         }
 
-        return new self($file, $fileName, $materialization, $byteReaderFactory);
+        return new self($file, $fileName, $materialization, $byteReaderFactory, $chunkSize);
     }
 
     /**
@@ -104,6 +120,8 @@ final class FileInputStream implements InputStream, IntArrayReader, ShortArrayRe
 
     /**
      * 設定された実体化方式に応じて int 配列の実装を作る。
+     *
+     * Resident 時はチャンク読み込みで SplFixedArray を直接構築し、中間 list の全量複製を避ける。
      */
     public function getIntArrayInstance(int $count): IntArray
     {
@@ -114,7 +132,9 @@ final class FileInputStream implements InputStream, IntArrayReader, ShortArrayRe
             return $array;
         }
 
-        return IntMemoryArray::fromReader($this, $count);
+        $this->cur += $count * 4;
+
+        return new IntMemoryArray($this->readIntoFixedArray($count, 4, 'l'));
     }
 
     /**
@@ -131,6 +151,8 @@ final class FileInputStream implements InputStream, IntArrayReader, ShortArrayRe
 
     /**
      * 設定された実体化方式に応じて signed short 配列の実装を作る。
+     *
+     * Resident 時はチャンク読み込みで SplFixedArray を直接構築し、中間 list の全量複製を避ける。
      */
     public function getShortArrayInstance(int $count): ShortArray
     {
@@ -141,11 +163,15 @@ final class FileInputStream implements InputStream, IntArrayReader, ShortArrayRe
             return $array;
         }
 
-        return ShortMemoryArray::fromReader($this, $count);
+        $this->cur += $count * 2;
+
+        return new ShortMemoryArray($this->readIntoFixedArray($count, 2, 's'));
     }
 
     /**
      * 設定された実体化方式に応じて unsigned short 文字コード配列の実装を作る。
+     *
+     * Resident 時はチャンク読み込みで SplFixedArray を直接構築し、中間 list の全量複製を避ける。
      */
     public function getCharArrayInstance(int $count): CharArray
     {
@@ -156,7 +182,9 @@ final class FileInputStream implements InputStream, IntArrayReader, ShortArrayRe
             return $array;
         }
 
-        return CharMemoryArray::fromReader($this, $count);
+        $this->cur += $count * 2;
+
+        return new CharMemoryArray($this->readIntoFixedArray($count, 2, 'S'));
     }
 
     /**
@@ -239,6 +267,9 @@ final class FileInputStream implements InputStream, IntArrayReader, ShortArrayRe
     /**
      * 現在位置から固定幅の値を指定件数だけ読み、list<int> として返す。
      *
+     * unpack の戻り値は 1 始まりキーのため array_values で 0 始まり連続添字へ正規化する。
+     * 恒等写像の array_map は不要なため除去済み（unpack は既に int を返す）。
+     *
      * @return list<int>
      */
     private function readUnpackedValues(int $count, int $byteWidth, string $unpackFormat): array
@@ -253,7 +284,45 @@ final class FileInputStream implements InputStream, IntArrayReader, ShortArrayRe
             throw new RuntimeException('dictionary unpacking failed.');
         }
 
-        return array_values(array_map(static fn(int $value): int => $value, $data));
+        return array_values($data);
+    }
+
+    /**
+     * 現在位置から固定幅の値を指定件数だけチャンク単位で読み、SplFixedArray へ直接詰め込む。
+     *
+     * 全量を list へ展開してから SplFixedArray::fromArray する二重複製を避け、
+     * ピークメモリを「SplFixedArray 本体 + 1 チャンク分の unpack 結果」に抑える。
+     * カーソル前進は呼び出し側が済ませてあるため、このメソッド内では進めない。
+     *
+     * @return SplFixedArray<int>
+     */
+    private function readIntoFixedArray(int $count, int $byteWidth, string $unpackFormat): SplFixedArray
+    {
+        $fixedArray = new SplFixedArray($count);
+
+        if ($count === 0) {
+            return $fixedArray;
+        }
+
+        $offset = 0;
+        $remaining = $count;
+
+        while ($remaining > 0) {
+            $batchCount = min($remaining, $this->chunkSize);
+            $data = unpack($unpackFormat . '*', $this->readBytes($batchCount * $byteWidth));
+
+            if ($data === false) {
+                throw new RuntimeException('dictionary unpacking failed.');
+            }
+
+            foreach ($data as $value) {
+                $fixedArray[$offset++] = $value;
+            }
+
+            $remaining -= $batchCount;
+        }
+
+        return $fixedArray;
     }
 
     /**

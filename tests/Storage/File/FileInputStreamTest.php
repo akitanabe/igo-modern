@@ -133,6 +133,121 @@ class FileInputStreamTest extends TestCase
     }
 
     /**
+     * Resident 時のチャンク読み込みがチャンク境界をまたいでも全値・順序を正しく返すことを確認する。
+     *
+     * チャンクサイズを 3 に設定し、5 件（= 1 チャンク + 2 件余り）の読み込みで境界をまたぐ正しさを検証する。
+     */
+    public function testResidentIntChunkBoundaryPreservesValues(): void
+    {
+        $values = [1, -2, 3, -4, 5];
+        $stream = FileInputStream::fromFile(
+            $this->createBinaryFile($this->packValues('l', $values)),
+            ArrayMaterialization::Resident(),
+            chunkSize: 3,
+        );
+
+        $instance = $stream->getIntArrayInstance(5);
+
+        $this->assertInstanceOf(IntMemoryArray::class, $instance);
+
+        foreach ($values as $idx => $expected) {
+            $this->assertSame($expected, $instance->get($idx), "index {$idx} mismatch");
+        }
+
+        $this->assertTrue($stream->close());
+    }
+
+    /**
+     * Resident 時のチャンク読み込みが signed short のチャンク境界で値・順序を保つことを確認する。
+     *
+     * チャンクサイズを 2 にして 5 件読み込み、複数のチャンクにまたがる境界処理を検証する。
+     */
+    public function testResidentShortChunkBoundaryPreservesValues(): void
+    {
+        $values = [100, -200, 300, -400, 500];
+        $stream = FileInputStream::fromFile(
+            $this->createBinaryFile($this->packValues('s', $values)),
+            ArrayMaterialization::Resident(),
+            chunkSize: 2,
+        );
+
+        $instance = $stream->getShortArrayInstance(5);
+
+        $this->assertInstanceOf(ShortMemoryArray::class, $instance);
+
+        foreach ($values as $idx => $expected) {
+            $this->assertSame($expected, $instance->get($idx), "index {$idx} mismatch");
+        }
+
+        $this->assertTrue($stream->close());
+    }
+
+    /**
+     * Resident 時のチャンク読み込みが unsigned short のチャンク境界で値・順序を保つことを確認する。
+     *
+     * チャンクサイズを 2 にして 5 件読み込み、複数のチャンクにまたがる境界処理を検証する。
+     */
+    public function testResidentCharChunkBoundaryPreservesValues(): void
+    {
+        $values = [65, 40_000, 65_535, 1, 32_768];
+        $stream = FileInputStream::fromFile(
+            $this->createBinaryFile($this->packValues('S', $values)),
+            ArrayMaterialization::Resident(),
+            chunkSize: 2,
+        );
+
+        $instance = $stream->getCharArrayInstance(5);
+
+        $this->assertInstanceOf(CharMemoryArray::class, $instance);
+
+        foreach ($values as $idx => $expected) {
+            $this->assertSame($expected, $instance->get($idx), "index {$idx} mismatch");
+        }
+
+        $this->assertTrue($stream->close());
+    }
+
+    /**
+     * Resident 時のチャンク読み込みが 0 件でも空の配列インスタンスを返すことを確認する。
+     */
+    public function testResidentChunkHandlesZeroCount(): void
+    {
+        $stream = FileInputStream::fromFile(
+            $this->createBinaryFile(''),
+            ArrayMaterialization::Resident(),
+            chunkSize: 3,
+        );
+
+        $instance = $stream->getIntArrayInstance(0);
+
+        $this->assertInstanceOf(IntMemoryArray::class, $instance);
+        $this->assertTrue($stream->close());
+    }
+
+    /**
+     * Resident 時のチャンク読み込みが件数がちょうどチャンクサイズの倍数でも正しく動くことを確認する。
+     */
+    public function testResidentChunkHandlesExactMultipleOfChunkSize(): void
+    {
+        $values = [10, -20, 30, -40, 50, -60];
+        $stream = FileInputStream::fromFile(
+            $this->createBinaryFile($this->packValues('l', $values)),
+            ArrayMaterialization::Resident(),
+            chunkSize: 3,
+        );
+
+        $instance = $stream->getIntArrayInstance(6);
+
+        $this->assertInstanceOf(IntMemoryArray::class, $instance);
+
+        foreach ($values as $idx => $expected) {
+            $this->assertSame($expected, $instance->get($idx), "index {$idx} mismatch");
+        }
+
+        $this->assertTrue($stream->close());
+    }
+
+    /**
      * 読み取り元にする一時バイナリファイルを作成する。
      */
     private function createBinaryFile(string $contents): string
