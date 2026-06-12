@@ -47,8 +47,14 @@ class MatrixBuilder implements DictionaryBuildStep
         }
     }
 
+    /** チャンク読みの単位サイズ(4MiB)。fgets を行ごとに呼ぶ syscall/関数呼び出しコストを償却する。 */
+    private const READ_CHUNK_SIZE = 4 * 1024 * 1024;
+
     /**
      * ヘッダで確保したバッファへ、各コスト行を MeCab の left-major 順検証付きで right-major へ詰め替える。
+     *
+     * 入力は fread によるチャンク読み + explode("\n") の行分割で処理し、fgets の行ごと呼び出しを避ける。
+     * fast path は (expectedLeft, expectedRight) の連続性を利用した無アロケーションのプレフィックス比較で判定する。
      *
      * @param resource $handle
      * @return array{header:string, costs:string}
@@ -63,34 +69,140 @@ class MatrixBuilder implements DictionaryBuildStep
         $costs = str_repeat("\0", $expectedEntryCount * 2);
         $index = 0;
 
-        while (($raw = fgets($handle)) !== false) {
+        // ID 順序検証は intdiv/mod を毎行行わず、インクリメンタルなカウンタで等価に判定する。
+        $expectedLeftId = 0;
+        $expectedRightId = 0;
+
+        // pack('s') 経路を避けられる LE 環境かを一度だけ判定し、ホットパスの分岐コストを定数化する。
+        $littleEndian = pack('S', 1) === "\x01\x00";
+
+        // fast path のプレフィックス比較に使う事前計算: "<right> " の文字列とその長さを right ごとに保持する。
+        $rightTokens = [];
+        $rightTokenLengths = [];
+
+        for ($r = 0; $r < $rightSize; $r++) {
+            $token = $r . ' ';
+            $rightTokens[$r] = $token;
+            $rightTokenLengths[$r] = strlen($token);
+        }
+
+        // left が繰り上がるたびに再計算する "<expectedLeft> " プレフィックスとその長さ・offset 基点。
+        $leftPrefix = $expectedLeftId . ' ';
+        $leftPrefixLen = strlen($leftPrefix);
+        // offset は right が +1 されるごとに leftSize*2 だけ進む。left 繰り上がり時のみ基点を再設定する。
+        $leftSizeTimes2 = $leftSize * 2;
+        $offset = $expectedLeftId * 2;
+
+        $carry = '';
+
+        while (($chunk = fread($handle, self::READ_CHUNK_SIZE)) !== false && $chunk !== '') {
+            // チャンク末尾の未完行を carry に持ち越し、次チャンク先頭と連結して 1 行に復元する。
+            $lines = explode("\n", $carry . $chunk);
+            $carry = array_pop($lines);
+
+            foreach ($lines as $line) {
+                $lineNumber++;
+
+                // fast path: "<expectedLeft> " と "<expectedRight> " のプレフィックス一致を無アロケーションで判定する。
+                if (
+                    strncmp($line, $leftPrefix, $leftPrefixLen) === 0
+                    && substr_compare(
+                        $line,
+                        $rightTokens[$expectedRightId],
+                        $leftPrefixLen,
+                        $rightTokenLengths[$expectedRightId],
+                    ) === 0
+                ) {
+                    $costStr = substr($line, $leftPrefixLen + $rightTokenLengths[$expectedRightId]);
+                    $costLen = strlen($costStr);
+                    $costStart = $costLen > 0 && $costStr[0] === '-' ? 1 : 0;
+
+                    // /^-?\d+$/ と同じ受理言語を strspn で無アロケーション判定する。"007" もここで受理してよい。
+                    if (
+                        ($costLen - $costStart) > 0
+                        && strspn($costStr, '0123456789', $costStart) === ($costLen - $costStart)
+                    ) {
+                        // 余剰行は順序検証より前に弾き、既存の entry count 不一致挙動を保つ。
+                        if ($index >= $expectedEntryCount) {
+                            throw new RuntimeException('matrix.def entry count does not match header sizes.');
+                        }
+
+                        $cost = (int) $costStr;
+
+                        if ($cost < -32_768 || $cost > 32_767) {
+                            throw new RuntimeException(sprintf(
+                                'matrix.def line %d cost is outside signed short range.',
+                                $lineNumber,
+                            ));
+                        }
+
+                        // right-major offset へ signed short を直接バイト代入する(syscall を伴わない O(1))。
+                        if ($littleEndian) {
+                            // LE 環境では pack('s') を介さず下位/上位バイトを直接代入し、関数呼び出しを省く。
+                            $costs[$offset] = chr($cost & 0xFF);
+                            $costs[$offset + 1] = chr(($cost >> 8) & 0xFF);
+                        } else {
+                            // LE 以外では native endian 出力を保つため従来どおり pack('s') の結果を代入する。
+                            $short = pack('s', $cost);
+                            $costs[$offset] = $short[0];
+                            $costs[$offset + 1] = $short[1];
+                        }
+
+                        $index++;
+
+                        // 次に期待する文脈 ID と offset を進める。right が rightSize に達したら left を繰り上げる。
+                        $expectedRightId++;
+                        $offset += $leftSizeTimes2;
+
+                        if ($expectedRightId === $rightSize) {
+                            $expectedRightId = 0;
+                            $expectedLeftId++;
+                            $leftPrefix = $expectedLeftId . ' ';
+                            $leftPrefixLen = strlen($leftPrefix);
+                            $offset = $expectedLeftId * 2;
+                        }
+
+                        continue;
+                    }
+                }
+
+                // fast path 不採用行は現行の trim + preg ロジックそのままで処理し、挙動を完全維持する。
+                $this->consumeFallbackLine(
+                    $line,
+                    $lineNumber,
+                    $expectedEntryCount,
+                    $leftSize,
+                    $rightSize,
+                    $littleEndian,
+                    $costs,
+                    $index,
+                    $expectedLeftId,
+                    $expectedRightId,
+                    $leftPrefix,
+                    $leftPrefixLen,
+                    $offset,
+                );
+            }
+        }
+
+        // 末尾改行なしファイルでは最終行が carry に残る。fgets 挙動と一致させて最終行として処理する。
+        if ($carry !== '') {
             $lineNumber++;
-            $line = trim($raw);
-
-            if ($line === '') {
-                continue;
-            }
-
-            // 余剰行は parse/順序検証より前に弾き、既存の entry count 不一致挙動を保つ。
-            if ($index >= $expectedEntryCount) {
-                throw new RuntimeException('matrix.def entry count does not match header sizes.');
-            }
-
-            [$leftId, $rightId, $cost] = $this->parseCostLine($line, $lineNumber);
-            $expectedLeftId = intdiv($index, $rightSize);
-            $expectedRightId = $index % $rightSize;
-
-            if ($leftId !== $expectedLeftId || $rightId !== $expectedRightId) {
-                throw new RuntimeException(sprintf('matrix.def line %d has unexpected context ids.', $lineNumber));
-            }
-
-            // right-major offset へ signed short を直接バイト代入する(syscall を伴わない O(1))。
-            $offset = (($rightId * $leftSize) + $leftId) * 2;
-            $short = pack('s', $cost);
-            $costs[$offset] = $short[0];
-            $costs[$offset + 1] = $short[1];
-
-            $index++;
+            $this->consumeFallbackLine(
+                $carry,
+                $lineNumber,
+                $expectedEntryCount,
+                $leftSize,
+                $rightSize,
+                $littleEndian,
+                $costs,
+                $index,
+                $expectedLeftId,
+                $expectedRightId,
+                $leftPrefix,
+                $leftPrefixLen,
+                $offset,
+            );
         }
 
         if ($index !== $expectedEntryCount) {
@@ -98,6 +210,69 @@ class MatrixBuilder implements DictionaryBuildStep
         }
 
         return ['header' => pack('l', $leftSize) . pack('l', $rightSize), 'costs' => $costs];
+    }
+
+    /**
+     * fast path を外れた 1 行を、現行の trim + preg ロジックで処理し挙動を完全維持する fallback。
+     *
+     * 空行は skip し、それ以外は parse・順序検証・範囲検証を経て right-major offset へ書き込む。
+     * 受理時はカウンタ群($index/$expectedLeftId/$expectedRightId)と offset 基点を fast path と整合する形で更新する。
+     */
+    private function consumeFallbackLine(
+        string $rawLine,
+        int $lineNumber,
+        int $expectedEntryCount,
+        int $leftSize,
+        int $rightSize,
+        bool $littleEndian,
+        string &$costs,
+        int &$index,
+        int &$expectedLeftId,
+        int &$expectedRightId,
+        string &$leftPrefix,
+        int &$leftPrefixLen,
+        int &$offset,
+    ): void {
+        $line = trim($rawLine);
+
+        if ($line === '') {
+            return;
+        }
+
+        // 余剰行は parse/順序検証より前に弾き、既存の entry count 不一致挙動を保つ。
+        if ($index >= $expectedEntryCount) {
+            throw new RuntimeException('matrix.def entry count does not match header sizes.');
+        }
+
+        [$leftId, $rightId, $cost] = $this->parseCostLine($line, $lineNumber);
+
+        if ($leftId !== $expectedLeftId || $rightId !== $expectedRightId) {
+            throw new RuntimeException(sprintf('matrix.def line %d has unexpected context ids.', $lineNumber));
+        }
+
+        // fallback 受理行も expected と同値なので、fast path と同じインクリメンタル offset へそのまま書き込む。
+        if ($littleEndian) {
+            $costs[$offset] = chr($cost & 0xFF);
+            $costs[$offset + 1] = chr(($cost >> 8) & 0xFF);
+        } else {
+            $short = pack('s', $cost);
+            $costs[$offset] = $short[0];
+            $costs[$offset + 1] = $short[1];
+        }
+
+        $index++;
+
+        // 次に期待する文脈 ID と offset を進める。right が rightSize に達したら left を繰り上げる。
+        $expectedRightId++;
+        $offset += $leftSize * 2;
+
+        if ($expectedRightId === $rightSize) {
+            $expectedRightId = 0;
+            $expectedLeftId++;
+            $leftPrefix = $expectedLeftId . ' ';
+            $leftPrefixLen = strlen($leftPrefix);
+            $offset = $expectedLeftId * 2;
+        }
     }
 
     /**

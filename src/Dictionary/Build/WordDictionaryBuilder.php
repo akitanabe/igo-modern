@@ -440,33 +440,51 @@ class WordDictionaryBuilder implements DictionaryBuildStep
     /**
      * int 値の列を native endian の連続バイナリへ変換する。
      *
+     * spread 演算子の引数上限を避けるため 10,000 要素ずつチャンクに分割し、
+     * pack('l*', ...$chunk) でまとめてパックした断片を連結して返す。
+     * 出力バイト列は要素ごとに pack('l', $v) した素朴実装と完全一致する。
+     *
      * @param list<int> $values
      */
     private function packInts(array $values): string
     {
-        $binary = '';
-
-        foreach ($values as $value) {
-            $binary .= pack('l', $value);
+        if ($values === []) {
+            return '';
         }
 
-        return $binary;
+        $chunks = array_chunk($values, 10_000);
+        $parts = [];
+
+        foreach ($chunks as $chunk) {
+            $parts[] = pack('l*', ...$chunk);
+        }
+
+        return implode('', $parts);
     }
 
     /**
      * signed short 値の列を native endian の連続バイナリへ変換する。
      *
+     * spread 演算子の引数上限を避けるため 10,000 要素ずつチャンクに分割し、
+     * pack('s*', ...$chunk) でまとめてパックした断片を連結して返す。
+     * 出力バイト列は要素ごとに pack('s', $v) した素朴実装と完全一致する。
+     *
      * @param list<int> $values
      */
     private function packShorts(array $values): string
     {
-        $binary = '';
-
-        foreach ($values as $value) {
-            $binary .= pack('s', $value);
+        if ($values === []) {
+            return '';
         }
 
-        return $binary;
+        $chunks = array_chunk($values, 10_000);
+        $parts = [];
+
+        foreach ($chunks as $chunk) {
+            $parts[] = pack('s*', ...$chunk);
+        }
+
+        return implode('', $parts);
     }
 
     /**
