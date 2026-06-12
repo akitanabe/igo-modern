@@ -9,7 +9,6 @@ use IgoModern\Binary\IntMemoryArray;
 use IgoModern\Dictionary\Category;
 use IgoModern\Dictionary\CharCategory;
 use PHPUnit\Framework\TestCase;
-use SplFixedArray;
 
 /**
  * CharCategory が構築済みのカテゴリ定義と文字コード表から、カテゴリ参照と互換性判定を行う挙動を検証するテスト。
@@ -69,6 +68,9 @@ class CharCategoryTest extends TestCase
     /**
      * 文字コードを添字とする int 配列を、指定値以外を 0 埋めした IntArray として構築する。
      *
+     * array_fill + foreach の代入で PHPStan が array<int,int> と推論するため、
+     * array_values で list<int> に正規化してから IntMemoryArray へ渡す。
+     *
      * @param non-empty-array<int, int> $values
      */
     private function intArray(array $values): IntArray
@@ -80,6 +82,6 @@ class CharCategoryTest extends TestCase
             $dense[$code] = $value;
         }
 
-        return new IntMemoryArray(SplFixedArray::fromArray($dense, false));
+        return new IntMemoryArray(array_values($dense));
     }
 }

@@ -10,6 +10,8 @@ use RuntimeException;
 
 /**
  * unsigned short の文字コード配列を reader から一括で読み込み、メモリ上から返す。
+ *
+ * 内部表現は親クラス IntMemoryArray と同じく通常 PHP 配列（packed list）を使う。
  */
 class CharMemoryArray extends IntMemoryArray implements CharArray
 {
@@ -22,6 +24,6 @@ class CharMemoryArray extends IntMemoryArray implements CharArray
             throw new RuntimeException('dictionary reading failed.');
         }
 
-        return new self(self::fixedArrayFromValues($reader->getCharArray($count)));
+        return new self($reader->getCharArray($count));
     }
 }

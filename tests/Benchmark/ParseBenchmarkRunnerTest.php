@@ -68,6 +68,107 @@ class ParseBenchmarkRunnerTest extends TestCase
     }
 
     /**
+     * ParseBenchmarkConfig に inputEncoding を指定した場合、parser factory へ第 3 引数として渡されることを確認する。
+     */
+    public function testRunPassesInputEncodingToParserFactory(): void
+    {
+        $capturedInputs = [];
+        $runner = new ParseBenchmarkRunner(static function (
+            string $dictionary,
+            string $storage,
+            ?string $inputEncoding,
+        ) use (&$capturedInputs): Parser {
+            $capturedInputs[] = [$dictionary, $storage, $inputEncoding];
+
+            return new BenchmarkStubParser([new Morpheme('alpha', 'FEATURE_ALPHA', 0)]);
+        });
+
+        $runner->run(new ParseBenchmarkConfig('/tmp/dictionary', 1, 0, 'mixed', 'alpha', null, 'memory', 'UTF-8'));
+
+        $this->assertSame([['/tmp/dictionary', 'memory', 'UTF-8']], $capturedInputs);
+    }
+
+    /**
+     * ParseBenchmarkConfig の inputEncoding が null の場合、factory へ null が渡り従来動作になることを確認する。
+     */
+    public function testRunPassesNullInputEncodingWhenNotSpecified(): void
+    {
+        $capturedInputs = [];
+        $runner = new ParseBenchmarkRunner(static function (
+            string $dictionary,
+            string $storage,
+            ?string $inputEncoding,
+        ) use (&$capturedInputs): Parser {
+            $capturedInputs[] = [$dictionary, $storage, $inputEncoding];
+
+            return new BenchmarkStubParser([new Morpheme('alpha', 'FEATURE_ALPHA', 0)]);
+        });
+
+        $runner->run(new ParseBenchmarkConfig('/tmp/dictionary', 1, 0, 'mixed', 'alpha', null, 'memory'));
+
+        $this->assertSame([['/tmp/dictionary', 'memory', null]], $capturedInputs);
+    }
+
+    /**
+     * ParseBenchmarkConfig に maxCachedPages を指定した場合、parser factory へ第 4 引数として渡されることを確認する。
+     */
+    public function testRunPassesMaxCachedPagesToParserFactory(): void
+    {
+        $capturedInputs = [];
+        $runner = new ParseBenchmarkRunner(static function (
+            string $dictionary,
+            string $storage,
+            ?string $inputEncoding,
+            ?int $maxCachedPages,
+        ) use (&$capturedInputs): Parser {
+            $capturedInputs[] = [$dictionary, $storage, $inputEncoding, $maxCachedPages];
+
+            return new BenchmarkStubParser([new Morpheme('alpha', 'FEATURE_ALPHA', 0)]);
+        });
+
+        $runner->run(new ParseBenchmarkConfig('/tmp/dictionary', 1, 0, 'mixed', 'alpha', null, 'memory', null, 16));
+
+        $this->assertSame([['/tmp/dictionary', 'memory', null, 16]], $capturedInputs);
+    }
+
+    /**
+     * ParseBenchmarkConfig の maxCachedPages が null の場合、factory へ null が渡り既定値を使うことを確認する。
+     */
+    public function testRunPassesNullMaxCachedPagesWhenNotSpecified(): void
+    {
+        $capturedInputs = [];
+        $runner = new ParseBenchmarkRunner(static function (
+            string $dictionary,
+            string $storage,
+            ?string $inputEncoding,
+            ?int $maxCachedPages,
+        ) use (&$capturedInputs): Parser {
+            $capturedInputs[] = [$dictionary, $storage, $inputEncoding, $maxCachedPages];
+
+            return new BenchmarkStubParser([new Morpheme('alpha', 'FEATURE_ALPHA', 0)]);
+        });
+
+        $runner->run(new ParseBenchmarkConfig('/tmp/dictionary', 1, 0, 'mixed', 'alpha'));
+
+        $this->assertSame([['/tmp/dictionary', 'file', null, null]], $capturedInputs);
+    }
+
+    /**
+     * maxCachedPages が 1 未満のとき validateConfig が入力エラーとして拒否することを確認する。
+     */
+    public function testRunRejectsNonPositiveMaxCachedPages(): void
+    {
+        $runner = new ParseBenchmarkRunner(function (): Parser {
+            $this->fail('maxCachedPages が不正な場合、parser は作成されないべきです。');
+        });
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('maxCachedPages must be a positive integer.');
+
+        $runner->run(new ParseBenchmarkConfig('/tmp/dictionary', 1, 0, 'mixed', 'alpha', null, 'file', null, 0));
+    }
+
+    /**
      * 未対応の storage 種別は parser 生成前に入力エラーとして拒否することを確認する。
      */
     public function testRunRejectsUnsupportedStorage(): void

@@ -6,23 +6,27 @@ namespace IgoModern\Binary;
 
 use IgoModern\Binary\Contract\IntArray;
 use IgoModern\Binary\Contract\IntArrayReader;
+use IgoModern\Binary\Contract\RawIntValues;
 use RuntimeException;
-use SplFixedArray;
 
 /**
  * int 値の配列を reader から一括で読み込み、メモリ上から返す。
+ *
+ * 内部表現は 0 始まり連続添字の通常 PHP 配列（packed list）とする。
+ * SplFixedArray の ArrayAccess 経由アクセスより直接添字参照が高速なため、解析ホットパスの最適化を目的に変更した。
+ * RawIntValues を実装し、ホットパスへ生配列を公開してメソッド呼び出しを排除できるようにする。
  */
-class IntMemoryArray implements IntArray
+class IntMemoryArray implements IntArray, RawIntValues
 {
-    /** @var SplFixedArray<int> 添字指定で返す固定件数の int 値を保持する。 */
-    protected SplFixedArray $array;
+    /** @var list<int> 添字指定で返す固定件数の int 値を 0 始まり連続添字の配列で保持する。 */
+    protected array $array;
 
     /**
      * 読み込み済みの固定長 int 値列を、添字参照用に保持する。
      *
-     * @param SplFixedArray<int> $array
+     * @param list<int> $array 0 始まり連続添字の int 値列。unpack 由来で要素は必ず int であることが前提。
      */
-    public function __construct(SplFixedArray $array)
+    public function __construct(array $array)
     {
         $this->array = $array;
     }
@@ -36,17 +40,21 @@ class IntMemoryArray implements IntArray
             throw new RuntimeException('dictionary reading failed.');
         }
 
-        return new self(self::fixedArrayFromValues($reader->getIntArray($count)));
+        return new self($reader->getIntArray($count));
     }
 
     /**
      * メモリ上に保持した int 値を指定添字で返す。
+     *
+     * unpack 由来の配列は要素が int であることが保証されているため is_int 検証は省略する。
+     * 存在しない添字の場合は RuntimeException を投げ、呼び出し元に範囲外アクセスを知らせる。
      */
     public function get(int $idx): int
     {
-        $value = $this->array[$idx];
+        // 要素は unpack 由来の int のみで null は存在しないため、?? の 1 回参照で範囲外を判定できる。
+        $value = $this->array[$idx] ?? null;
 
-        if (!is_int($value)) {
+        if ($value === null) {
             throw new RuntimeException('dictionary reading failed.');
         }
 
@@ -54,13 +62,12 @@ class IntMemoryArray implements IntArray
     }
 
     /**
-     * reader が返した固定長の int 値列を SplFixedArray へ詰め替える。
+     * 内部に保持した生 PHP 配列をそのまま返し、ホットパスでの直接添字参照を可能にする。
      *
-     * @param list<int> $values
-     * @return SplFixedArray<int>
+     * copy-on-write のため戻り値の保持ではコピーは発生せず、添字参照のみなら最後までコピーは起きない。
      */
-    protected static function fixedArrayFromValues(array $values): SplFixedArray
+    public function values(): array
     {
-        return SplFixedArray::fromArray($values, false);
+        return $this->array;
     }
 }

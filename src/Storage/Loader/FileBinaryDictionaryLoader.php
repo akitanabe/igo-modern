@@ -39,10 +39,12 @@ final class FileBinaryDictionaryLoader implements BinaryDictionaryLoader
 
     /**
      * FileStorage 用に、Lazy（DynamicArray）実体化を内包した loader を構築する。
+     *
+     * @param ?int $maxCachedPages ページキャッシュ上限数。null なら PagedBinaryReader の既定値を使う。
      */
-    public static function forFileStorage(string $dataDir): self
+    public static function forFileStorage(string $dataDir, ?int $maxCachedPages = null): self
     {
-        $byteReaderFactory = new PagedByteReaderFactory();
+        $byteReaderFactory = new PagedByteReaderFactory($maxCachedPages);
 
         return new self($dataDir, FileInputStreamFactory::lazy($byteReaderFactory), $byteReaderFactory);
     }

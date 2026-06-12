@@ -84,6 +84,14 @@ vendor/bin/igo -d /path/to/igo-dic -i "すもももももももものうち"
 vendor/bin/igo --dictionary=/path/to/igo-dic --file=input.txt --encoding=UTF-8
 ```
 
+入力エンコーディングが既知の場合は、`--input-encoding` で固定すると parse ごとの自動検出を省略でき、解析が速くなります。
+
+```bash
+vendor/bin/igo --dictionary=/path/to/igo-dic --file=input.txt --input-encoding=UTF-8
+```
+
+辞書読み込みのページキャッシュ上限は `--page-cache` で調整できます。推奨値は「ページキャッシュの調整」を参照してください。
+
 `parse` は `bin/igo` のデフォルトコマンドです。そのため、上の例のようにコマンド名を省略できます。明示する場合は、次のように実行します。
 
 ```bash
@@ -123,6 +131,8 @@ XDEBUG_MODE=off php bin/bench parse \
 - `-f` / `--file`: UTF-8 の測定対象ファイルを指定します。
 - `-o` / `--output`: ベンチマークレポートをファイルへ保存します。
 - `-m` / `--morpheme-output`: 最後の解析結果を `surface<TAB>feature,start` 形式で保存します。
+- `--input-encoding`: 入力エンコーディングを固定し、parse ごとの自動検出を省略します。
+- `--page-cache`: `--storage=file` のページキャッシュ上限（reader ごとのページ数）です。未指定時は `512` です。
 
 `--text` と `--file` は同時に指定できません。`--output` と `--morpheme-output` のパスには `{datetime}` を含められます。`{datetime}` は、実行時に `Ymd-His` 形式の時刻へ展開されます。
 
@@ -193,12 +203,13 @@ $surfaces = $igo->wakati('すもももももももものうち');
 print_r($surfaces);
 ```
 
-出力エンコーディングは、`fromStorage()` の第 2 引数で指定します。第 2 引数を省略した場合は、辞書から読み込んだ結果をそのまま返します。
+出力エンコーディングは、`fromStorage()` の第 2 引数で指定します。第 2 引数を省略した場合は、辞書から読み込んだ結果をそのまま返します。入力エンコーディングが既知の場合は、第 3 引数で固定すると parse ごとの自動検出を省略できます。
 
 ```php
 $storage = FileStorage::fromDataDir('/path/to/igo-dic');
 $igo = Igo::fromStorage($storage);
 $igoWithUtf8Output = Igo::fromStorage($storage, 'UTF-8');
+$igoWithFixedInput = Igo::fromStorage($storage, 'UTF-8', 'UTF-8');
 ```
 
 辞書ストレージには、辞書配列をアクセスごとに遅延読みする `FileStorage` のほかに、辞書配列をすべてメモリへ常駐させる `MemoryStorage` を選べます。いずれも `fromDataDir()` に同じ辞書ディレクトリを渡します。
@@ -211,6 +222,23 @@ $igo = Igo::fromStorage($storage, 'UTF-8');
 ```
 
 辞書ディレクトリの読み込みに失敗した場合、`FileStorage::fromDataDir()` などのストレージ生成メソッドは例外を送出します。
+
+ページキャッシュの調整
+----------------------
+
+`FileStorage` は辞書ファイルを 8KB のページ単位で読み込み、reader ごとに上限付きでキャッシュします。上限ページ数は `FileStorage::fromDataDir()` の第 2 引数（CLI / ベンチでは `--page-cache`）で指定できます。
+
+```php
+// メモリ節約重視の例: reader ごとの上限を 32 ページ（約 256KB）にする
+$storage = FileStorage::fromDataDir('/path/to/igo-dic', 32);
+```
+
+UniDic 辞書と 59KB のコーパスを用いた実測に基づく推奨値は次のとおりです。
+
+- バランス重視（既定値）: `512`。解析速度はこの付近で飽和し、これ以上増やしてもメモリだけが増えます。
+- メモリ節約重視: `32`。既定値に比べて解析速度は約 1.3 倍遅くなりますが、ピークメモリを約 50MiB から約 19MiB に抑えられます。`16` 以下では速度が急激に劣化するため推奨しません。
+
+最適値は辞書サイズとアクセスパターンに依存するため、`bin/bench parse --storage=file --page-cache=<N>` で実測して調整してください。
 
 解析で例外を呼び出し側に出したくない場合は、失敗時に `null` を返す `tryParse()`、`tryWakati()` を利用できます。
 

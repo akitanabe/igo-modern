@@ -22,10 +22,15 @@ class Igo implements Parser
 
     /**
      * 辞書ストレージ抽象から公開 API を構築する正式な拡張点。
+     *
+     * @param ?string $inputEncoding 入力エンコーディングを固定する場合に指定。null なら parse ごとに検出する。
      */
-    public static function fromStorage(DictionaryStorage $storage, ?string $outputEncoding = null): self
-    {
-        return new self(Tagger::fromStorage($storage, $outputEncoding));
+    public static function fromStorage(
+        DictionaryStorage $storage,
+        ?string $outputEncoding = null,
+        ?string $inputEncoding = null,
+    ): self {
+        return new self(Tagger::fromStorage($storage, $outputEncoding, $inputEncoding));
     }
 
     /**

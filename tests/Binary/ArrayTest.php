@@ -17,7 +17,6 @@ use IgoModern\Storage\File\PagedByteReaderFactory;
 use IgoModern\Tests\Support\RecordingByteReader;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
-use SplFixedArray;
 
 /**
  * 辞書バイナリ上の数値配列をメモリまたはファイルから読む実装を検証するテスト。
@@ -54,15 +53,82 @@ class ArrayTest extends TestCase
     }
 
     /**
-     * IntMemoryArray が固定件数の値を通常の PHP 配列ではなく SplFixedArray として保持することを確認する。
+     * IntMemoryArray が固定件数の値を通常の PHP 配列（packed list）として保持することを確認する。
+     *
+     * SplFixedArray から array へ移行したため、内部表現が 0 始まり連続添字の list であることを検証する。
      */
-    public function testIntMemoryArrayStoresValuesInFixedArray(): void
+    public function testIntMemoryArrayStoresValuesInPhpArray(): void
     {
         $array = IntMemoryArray::fromReader($this->createIntReader([5, -7, 13]), 3);
         $arrayProperty = new ReflectionProperty(IntMemoryArray::class, 'array');
         $arrayProperty->setAccessible(true);
 
-        $this->assertInstanceOf(SplFixedArray::class, $arrayProperty->getValue($array));
+        $internalArray = $arrayProperty->getValue($array);
+
+        $this->assertIsArray($internalArray);
+        $this->assertSame([5, -7, 13], $internalArray);
+    }
+
+    /**
+     * IntMemoryArray の get() が範囲外添字に対して未定義ワーニングではなく RuntimeException を投げることを固定する。
+     *
+     * 内部実装を SplFixedArray から array へ変更したことで、存在しない添字アクセスの挙動が変わりうるため
+     * テストで明示的に仕様として固定する。
+     */
+    public function testIntMemoryArrayThrowsOnOutOfBoundsIndex(): void
+    {
+        $array = IntMemoryArray::fromReader($this->createIntReader([5, -7, 13]), 3);
+
+        $this->expectException(\RuntimeException::class);
+
+        $array->get(99);
+    }
+
+    /**
+     * IntMemoryArray が RawIntValues として内部生配列をコピーなしの list で公開することを確認する。
+     *
+     * ホットパスの直接添字参照に使うため、get() と同じ値を 0 始まり連続添字で返すことを固定する。
+     */
+    public function testIntMemoryArrayExposesRawValuesAsList(): void
+    {
+        $array = IntMemoryArray::fromReader($this->createIntReader([5, -7, 13]), 3);
+
+        $this->assertInstanceOf(\IgoModern\Binary\Contract\RawIntValues::class, $array);
+        $this->assertSame([5, -7, 13], $array->values());
+    }
+
+    /**
+     * ShortMemoryArray / CharMemoryArray も継承により RawIntValues として生配列を公開することを確認する。
+     */
+    public function testShortAndCharMemoryArraysExposeRawValues(): void
+    {
+        $short = ShortMemoryArray::fromReader($this->createShortReader([12, -34, 56]), 3);
+        $char = CharMemoryArray::fromReader($this->createCharReader([65, 40_000, 65_535]), 3);
+
+        $this->assertSame([12, -34, 56], $short->values());
+        $this->assertSame([65, 40_000, 65_535], $char->values());
+    }
+
+    /**
+     * IntDynamicArray が RawIntValues を実装せず、Lazy 経路では生配列公開できないことを確認する。
+     *
+     * これにより Tagger / BinaryWordDictionary が Lazy 時に fallback 経路を選ぶ前提が固定される。
+     */
+    public function testDynamicArraysDoNotExposeRawValues(): void
+    {
+        $reader = new RecordingByteReader($this->packValues('l', [10, -20, 30]));
+        // IntArray 契約越しに見て、Lazy 実装が RawIntValues 境界を持たないことを検証する。
+        $array = $this->asIntArray(new IntDynamicArray($reader, 0));
+
+        $this->assertNotInstanceOf(\IgoModern\Binary\Contract\RawIntValues::class, $array);
+    }
+
+    /**
+     * 具象型を IntArray 契約へ持ち上げ、RawIntValues 非実装を契約境界の観点で検証できるようにする。
+     */
+    private function asIntArray(\IgoModern\Binary\Contract\IntArray $array): \IgoModern\Binary\Contract\IntArray
+    {
+        return $array;
     }
 
     /**

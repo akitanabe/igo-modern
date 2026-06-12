@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IgoModern\Benchmark;
 
+use IgoModern\Storage\File\PagedBinaryReader;
 use InvalidArgumentException;
 use RuntimeException;
 use Symfony\Component\Console\Command\Command;
@@ -74,6 +75,20 @@ class ParseBenchmarkCommand extends Command
                 'm',
                 InputOption::VALUE_REQUIRED,
                 'Write morpheme output to a file. Use {datetime} for Ymd-His timestamp.',
+            )
+            ->addOption(
+                'input-encoding',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Fixed input encoding (skips auto-detection). Default: auto-detect.',
+            )
+            ->addOption(
+                'page-cache',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Max cached pages for file storage (positive integer, memory-saving: 32). Default: '
+                . PagedBinaryReader::DEFAULT_MAX_CACHED_PAGES
+                . '.',
             );
     }
 
@@ -161,7 +176,43 @@ class ParseBenchmarkCommand extends Command
             $this->stringOption($input, 'text'),
             $this->stringOption($input, 'file'),
             $this->storageOption($input),
+            $this->inputEncodingOption($input),
+            $this->pageCacheOption($input),
         );
+    }
+
+    /**
+     * CLI オプションで明示された入力エンコーディング固定値を任意設定として取り出す。
+     */
+    private function inputEncodingOption(InputInterface $input): ?string
+    {
+        $encoding = $this->stringOption($input, 'input-encoding');
+
+        if ($encoding !== null && $encoding !== '') {
+            return $encoding;
+        }
+
+        return null;
+    }
+
+    /**
+     * --page-cache オプションで明示されたキャッシュ上限ページ数を検証して返す。
+     *
+     * 未指定なら null を返し PagedBinaryReader の既定値を使う。1 未満が指定された場合は早期エラーにする。
+     */
+    private function pageCacheOption(InputInterface $input): ?int
+    {
+        $value = $this->stringOption($input, 'page-cache');
+
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (!ctype_digit($value) || (int) $value < 1) {
+            throw new InvalidArgumentException('--page-cache must be a positive integer.');
+        }
+
+        return (int) $value;
     }
 
     /**

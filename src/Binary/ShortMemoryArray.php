@@ -10,6 +10,8 @@ use RuntimeException;
 
 /**
  * signed short 値の配列を reader から一括で読み込み、メモリ上から返す。
+ *
+ * 内部表現は親クラス IntMemoryArray と同じく通常 PHP 配列（packed list）を使う。
  */
 class ShortMemoryArray extends IntMemoryArray implements ShortArray
 {
@@ -22,6 +24,6 @@ class ShortMemoryArray extends IntMemoryArray implements ShortArray
             throw new RuntimeException('dictionary reading failed.');
         }
 
-        return new self(self::fixedArrayFromValues($reader->getShortArray($count)));
+        return new self($reader->getShortArray($count));
     }
 }

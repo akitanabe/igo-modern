@@ -9,6 +9,7 @@ use IgoModern\Benchmark\ParseBenchmarkCommand;
 use IgoModern\Benchmark\ParseBenchmarkConfig;
 use IgoModern\Benchmark\ParseBenchmarkResult;
 use IgoModern\Benchmark\ParseBenchmarkRunner;
+use IgoModern\Morpheme;
 use IgoModern\Parser;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -66,6 +67,143 @@ class ParseBenchmarkCommandTest extends TestCase
         $this->assertSame('f', $definition->getOption('file')->getShortcut());
         $this->assertSame('o', $definition->getOption('output')->getShortcut());
         $this->assertSame('m', $definition->getOption('morpheme-output')->getShortcut());
+        $this->assertTrue($definition->hasOption('input-encoding'));
+        $this->assertTrue($definition->hasOption('page-cache'));
+    }
+
+    /**
+     * --input-encoding オプションが runner の parserFactory へ伝搬されることを確認する。
+     */
+    public function testExecutePassesInputEncodingToRunnerParserFactory(): void
+    {
+        $dictionary = $this->temporaryDirectory('igo-bench-dic-');
+        $capturedInputs = [];
+        $runner = new ParseBenchmarkRunner(static function (string $dict, string $storage, ?string $inputEncoding) use (
+            &$capturedInputs,
+        ): Parser {
+            $capturedInputs[] = [$dict, $storage, $inputEncoding];
+
+            return new BenchmarkStubParser([new Morpheme('A', 'ALPHA', 0)]);
+        });
+        $command = new ParseBenchmarkCommand($runner);
+        $tester = new CommandTester($command);
+
+        $tester->execute([
+            '-d' => $dictionary,
+            '--input-encoding' => 'UTF-8',
+            '-i' => 'A',
+            '-r' => '1',
+        ]);
+
+        $this->assertCount(1, $capturedInputs);
+        $this->assertSame('UTF-8', $capturedInputs[0][2]);
+    }
+
+    /**
+     * --input-encoding 未指定時は null が渡り、従来動作（検出あり）になることを確認する。
+     */
+    public function testExecutePassesNullInputEncodingWhenOptionIsOmitted(): void
+    {
+        $dictionary = $this->temporaryDirectory('igo-bench-dic-');
+        $capturedInputs = [];
+        $runner = new ParseBenchmarkRunner(static function (string $dict, string $storage, ?string $inputEncoding) use (
+            &$capturedInputs,
+        ): Parser {
+            $capturedInputs[] = [$dict, $storage, $inputEncoding];
+
+            return new BenchmarkStubParser([new Morpheme('A', 'ALPHA', 0)]);
+        });
+        $command = new ParseBenchmarkCommand($runner);
+        $tester = new CommandTester($command);
+
+        $tester->execute([
+            '-d' => $dictionary,
+            '-i' => 'A',
+            '-r' => '1',
+        ]);
+
+        $this->assertCount(1, $capturedInputs);
+        $this->assertNull($capturedInputs[0][2]);
+    }
+
+    /**
+     * --page-cache オプションが runner の parserFactory へ maxCachedPages として伝搬されることを確認する。
+     */
+    public function testExecutePassesPageCacheToRunnerParserFactory(): void
+    {
+        $dictionary = $this->temporaryDirectory('igo-bench-dic-');
+        $capturedInputs = [];
+        $runner = new ParseBenchmarkRunner(static function (
+            string $dict,
+            string $storage,
+            ?string $inputEncoding,
+            ?int $maxCachedPages,
+        ) use (&$capturedInputs): Parser {
+            $capturedInputs[] = [$dict, $storage, $inputEncoding, $maxCachedPages];
+
+            return new BenchmarkStubParser([new Morpheme('A', 'ALPHA', 0)]);
+        });
+        $command = new ParseBenchmarkCommand($runner);
+        $tester = new CommandTester($command);
+
+        $tester->execute([
+            '-d' => $dictionary,
+            '--page-cache' => '16',
+            '-i' => 'A',
+            '-r' => '1',
+        ]);
+
+        $this->assertCount(1, $capturedInputs);
+        $this->assertSame(16, $capturedInputs[0][3]);
+    }
+
+    /**
+     * --page-cache 未指定時は null が渡り、PagedBinaryReader の既定値が使われることを確認する。
+     */
+    public function testExecutePassesNullPageCacheWhenOptionIsOmitted(): void
+    {
+        $dictionary = $this->temporaryDirectory('igo-bench-dic-');
+        $capturedInputs = [];
+        $runner = new ParseBenchmarkRunner(static function (
+            string $dict,
+            string $storage,
+            ?string $inputEncoding,
+            ?int $maxCachedPages,
+        ) use (&$capturedInputs): Parser {
+            $capturedInputs[] = [$dict, $storage, $inputEncoding, $maxCachedPages];
+
+            return new BenchmarkStubParser([new Morpheme('A', 'ALPHA', 0)]);
+        });
+        $command = new ParseBenchmarkCommand($runner);
+        $tester = new CommandTester($command);
+
+        $tester->execute([
+            '-d' => $dictionary,
+            '-i' => 'A',
+            '-r' => '1',
+        ]);
+
+        $this->assertCount(1, $capturedInputs);
+        $this->assertNull($capturedInputs[0][3]);
+    }
+
+    /**
+     * --page-cache に 0 以下の値が指定された場合は CLI 入力エラーとして失敗することを確認する。
+     */
+    public function testExecuteFailsWhenPageCacheIsNotPositive(): void
+    {
+        $dictionary = $this->temporaryDirectory('igo-bench-dic-');
+        $command = new ParseBenchmarkCommand(new FixedParseBenchmarkRunner());
+        $tester = new CommandTester($command);
+
+        $statusCode = $tester->execute([
+            '--dictionary' => $dictionary,
+            '--page-cache' => '0',
+            '-i' => 'A',
+        ]);
+
+        $this->assertSame(1, $statusCode);
+        $this->assertStringContainsString('--page-cache must be a positive integer.', $tester->getDisplay());
     }
 
     /**
