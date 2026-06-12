@@ -19,14 +19,13 @@ use IgoModern\Binary\IntMemoryArray;
 use IgoModern\Binary\ShortDynamicArray;
 use IgoModern\Binary\ShortMemoryArray;
 use RuntimeException;
-use SplFixedArray;
 
 /**
  * 辞書バイナリを現在位置から順に読み、配列実装の入力元にもなるストリーム。
  *
  * ファイルシステム操作と実体化方式（Lazy / Resident）の知識を Storage 内へ閉じ、辞書クラスへは
  * InputStream 契約だけを公開する。Memory 配列の fromReader 用に *ArrayReader も実装する。
- * Resident 実体化では中間 list を経由せずチャンク単位で SplFixedArray へ直接詰め込み、ピークメモリを抑える。
+ * Resident 実体化では中間 list を経由せずチャンク単位で通常 PHP 配列へ直接詰め込み、ピークメモリを抑える。
  */
 final class FileInputStream implements InputStream, IntArrayReader, ShortArrayReader, CharArrayReader
 {
@@ -48,7 +47,7 @@ final class FileInputStream implements InputStream, IntArrayReader, ShortArrayRe
     /**
      * Resident 実体化でチャンク読み込みする際の 1 チャンクあたりの要素数を保持する。
      *
-     * デフォルト 1_000_000 はピークメモリを「SplFixedArray + 1 チャンク分」に抑える経験値。
+     * デフォルト 1_000_000 はピークメモリを「配列本体 + 1 チャンク分の unpack 結果」に抑える経験値。
      * テスト時は小さい値を注入してチャンク境界の正しさを確認できる。
      */
     private int $chunkSize;
@@ -121,7 +120,7 @@ final class FileInputStream implements InputStream, IntArrayReader, ShortArrayRe
     /**
      * 設定された実体化方式に応じて int 配列の実装を作る。
      *
-     * Resident 時はチャンク読み込みで SplFixedArray を直接構築し、中間 list の全量複製を避ける。
+     * Resident 時はチャンク読み込みで通常 PHP 配列を直接構築し、中間 list の全量複製を避ける。
      */
     public function getIntArrayInstance(int $count): IntArray
     {
@@ -134,7 +133,7 @@ final class FileInputStream implements InputStream, IntArrayReader, ShortArrayRe
 
         $this->cur += $count * 4;
 
-        return new IntMemoryArray($this->readIntoFixedArray($count, 4, 'l'));
+        return new IntMemoryArray($this->readIntoArray($count, 4, 'l'));
     }
 
     /**
@@ -152,7 +151,7 @@ final class FileInputStream implements InputStream, IntArrayReader, ShortArrayRe
     /**
      * 設定された実体化方式に応じて signed short 配列の実装を作る。
      *
-     * Resident 時はチャンク読み込みで SplFixedArray を直接構築し、中間 list の全量複製を避ける。
+     * Resident 時はチャンク読み込みで通常 PHP 配列を直接構築し、中間 list の全量複製を避ける。
      */
     public function getShortArrayInstance(int $count): ShortArray
     {
@@ -165,13 +164,13 @@ final class FileInputStream implements InputStream, IntArrayReader, ShortArrayRe
 
         $this->cur += $count * 2;
 
-        return new ShortMemoryArray($this->readIntoFixedArray($count, 2, 's'));
+        return new ShortMemoryArray($this->readIntoArray($count, 2, 's'));
     }
 
     /**
      * 設定された実体化方式に応じて unsigned short 文字コード配列の実装を作る。
      *
-     * Resident 時はチャンク読み込みで SplFixedArray を直接構築し、中間 list の全量複製を避ける。
+     * Resident 時はチャンク読み込みで通常 PHP 配列を直接構築し、中間 list の全量複製を避ける。
      */
     public function getCharArrayInstance(int $count): CharArray
     {
@@ -184,7 +183,7 @@ final class FileInputStream implements InputStream, IntArrayReader, ShortArrayRe
 
         $this->cur += $count * 2;
 
-        return new CharMemoryArray($this->readIntoFixedArray($count, 2, 'S'));
+        return new CharMemoryArray($this->readIntoArray($count, 2, 'S'));
     }
 
     /**
@@ -288,23 +287,21 @@ final class FileInputStream implements InputStream, IntArrayReader, ShortArrayRe
     }
 
     /**
-     * 現在位置から固定幅の値を指定件数だけチャンク単位で読み、SplFixedArray へ直接詰め込む。
+     * 現在位置から固定幅の値を指定件数だけチャンク単位で読み、通常 PHP 配列（packed list）へ詰め込む。
      *
-     * 全量を list へ展開してから SplFixedArray::fromArray する二重複製を避け、
-     * ピークメモリを「SplFixedArray 本体 + 1 チャンク分の unpack 結果」に抑える。
+     * 全量を一括 unpack して list を作るのと比べ、ピークメモリを「配列本体 + 1 チャンク分の unpack 結果」に抑える。
+     * unpack の戻りは 1 始まりキーだが、$result[] = $value の append で自然に 0 始まり連続添字の packed list になる。
      * カーソル前進は呼び出し側が済ませてあるため、このメソッド内では進めない。
      *
-     * @return SplFixedArray<int>
+     * @return list<int>
      */
-    private function readIntoFixedArray(int $count, int $byteWidth, string $unpackFormat): SplFixedArray
+    private function readIntoArray(int $count, int $byteWidth, string $unpackFormat): array
     {
-        $fixedArray = new SplFixedArray($count);
-
         if ($count === 0) {
-            return $fixedArray;
+            return [];
         }
 
-        $offset = 0;
+        $result = [];
         $remaining = $count;
 
         while ($remaining > 0) {
@@ -316,13 +313,13 @@ final class FileInputStream implements InputStream, IntArrayReader, ShortArrayRe
             }
 
             foreach ($data as $value) {
-                $fixedArray[$offset++] = $value;
+                $result[] = $value;
             }
 
             $remaining -= $batchCount;
         }
 
-        return $fixedArray;
+        return $result;
     }
 
     /**
