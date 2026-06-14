@@ -125,18 +125,35 @@ class DoubleArrayTrieBuilder
     /**
      * tail 圧縮されず double-array 上に配置が必要な trie ノードだけを集める。
      *
+     * 再帰 + spread コピー（O(ノード数×木の深さ)）を除去するため、明示的スタックによる
+     * 反復前順 DFS に書き換えた。元の再帰では children を挿入順に処理するため、
+     * スタックには children を逆順に push して同じ前順訪問順を維持する。
+     * 順序を変えると assignBases() の usort 後の base 割り当てが変わり、
+     * 生成バイナリが変化するため厳守する。
+     *
      * @return list<TrieBuildNode>
      */
     private function nodesNeedingBase(TrieBuildNode $node): array
     {
-        $nodes = [$node];
+        /** @var list<TrieBuildNode> $nodes */
+        $nodes = [];
+        /** @var list<TrieBuildNode> $stack */
+        $stack = [$node];
 
-        foreach ($node->children as $child) {
-            if ($this->compressedTail($child) !== null) {
-                continue;
+        while ($stack !== []) {
+            $current = array_pop($stack);
+            $nodes[] = $current;
+
+            // 元の再帰は foreach の挿入順で children を前から処理するため、
+            // スタック（LIFO）では children の逆順に push して同じ訪問順を保つ。
+            $reversedChildren = array_reverse($current->children);
+            foreach ($reversedChildren as $child) {
+                if ($this->compressedTail($child) !== null) {
+                    continue;
+                }
+
+                $stack[] = $child;
             }
-
-            array_push($nodes, ...$this->nodesNeedingBase($child));
         }
 
         return $nodes;
@@ -231,8 +248,11 @@ class DoubleArrayTrieBuilder
                 $this->writeInt32($begs, $id * 4, intdiv(strlen($tail), 2));
                 $this->writeInt16($lens, $id * 2, count($compressed['suffix']));
 
-                foreach ($compressed['suffix'] as $unit) {
-                    $tail .= pack('S', $unit);
+                // suffix が空でなければ全 code unit を一括 pack して tail へ追記する。
+                // 元の foreach による 1 要素ずつの pack を pack('S*', ...$suffix) で
+                // バッチ化し、関数呼び出しとバイト列連結のオーバーヘッドを削減する。
+                if ($compressed['suffix'] !== []) {
+                    $tail .= pack('S*', ...$compressed['suffix']);
                 }
 
                 continue;
@@ -297,33 +317,48 @@ class DoubleArrayTrieBuilder
     /**
      * 途中に分岐や終端がない単一路なら、現在ノード以降を tail suffix として表現する。
      *
+     * 戻り値のセマンティクス:
+     *   - ノード自身が id を持ち children 空 → ['id'=>id, 'suffix'=>[]]
+     *   - ノード自身が id を持ち children あり → null（途中終端は tail 圧縮不可）
+     *   - children が 1 つでない → null（分岐または葉なし終端）
+     *   - 単一路の先で compressedTail が null → null
+     *   - 単一路の終端まで降下できた → ['id'=>..., 'suffix'=>降下順の code 列]
+     *
+     * 元の再帰実装では戻るたびに array_unshift で suffix の先頭へ code を挿入していたため
+     * 長い単一路では suffix 長の二乗コスト（O(n²)）になっていた。
+     * 反復実装では降下しながら $codes[] に append する。
+     * 降下方向（親→子）に append するので suffix は既に正しい順序となり、reverse は不要。
+     *
      * @return array{id:int, suffix:list<int>}|null
      */
     private function compressedTail(TrieBuildNode $node): ?array
     {
-        if ($node->id !== null) {
-            if ($node->children !== []) {
+        /** @var list<int> $codes */
+        $codes = [];
+        $current = $node;
+
+        while (true) {
+            // id 持ちノードの場合: children が空なら tail 圧縮終端、children ありなら途中終端で圧縮不可
+            if ($current->id !== null) {
+                if ($current->children !== []) {
+                    return null;
+                }
+
+                // children が空 → 単一路の末端に達した。
+                // $codes は降下順（親→子）に積まれているので suffix としてそのまま返す。
+                return ['id' => $current->id, 'suffix' => $codes];
+            }
+
+            // 子が 1 つでない（分岐 or 葉でない終端）場合は tail 圧縮不可
+            if (count($current->children) !== 1) {
                 return null;
             }
 
-            return ['id' => $node->id, 'suffix' => []];
+            // 子が 1 つ → 単一路を降下する。降下方向（親→子）に code を末尾へ追記する。
+            $code = array_key_first($current->children);
+            $codes[] = $code;
+            $current = $current->children[$code];
         }
-
-        if (count($node->children) !== 1) {
-            return null;
-        }
-
-        $code = array_key_first($node->children);
-        $child = $node->children[$code];
-        $compressed = $this->compressedTail($child);
-
-        if ($compressed === null) {
-            return null;
-        }
-
-        array_unshift($compressed['suffix'], $code);
-
-        return $compressed;
     }
 
     /**

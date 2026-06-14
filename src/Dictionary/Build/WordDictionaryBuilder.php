@@ -440,14 +440,20 @@ class WordDictionaryBuilder implements DictionaryBuildStep
     /**
      * int 値の列を native endian の連続バイナリへ変換する。
      *
+     * spread 演算子の引数上限を避けるため 10,000 要素ずつ処理する。
+     * array_chunk による入力配列全体の複製を避けるため、array_slice で
+     * 1 チャンクずつ切り出して pack('l*', ...) し、バイナリ文字列へ逐次追記する。
+     * 出力バイト列は要素ごとに pack('l', $v) した素朴実装と完全一致する。
+     *
      * @param list<int> $values
      */
     private function packInts(array $values): string
     {
+        $count = count($values);
         $binary = '';
 
-        foreach ($values as $value) {
-            $binary .= pack('l', $value);
+        for ($offset = 0; $offset < $count; $offset += 10_000) {
+            $binary .= pack('l*', ...array_slice($values, $offset, 10_000));
         }
 
         return $binary;
@@ -456,14 +462,20 @@ class WordDictionaryBuilder implements DictionaryBuildStep
     /**
      * signed short 値の列を native endian の連続バイナリへ変換する。
      *
+     * spread 演算子の引数上限を避けるため 10,000 要素ずつ処理する。
+     * array_chunk による入力配列全体の複製を避けるため、array_slice で
+     * 1 チャンクずつ切り出して pack('s*', ...) し、バイナリ文字列へ逐次追記する。
+     * 出力バイト列は要素ごとに pack('s', $v) した素朴実装と完全一致する。
+     *
      * @param list<int> $values
      */
     private function packShorts(array $values): string
     {
+        $count = count($values);
         $binary = '';
 
-        foreach ($values as $value) {
-            $binary .= pack('s', $value);
+        for ($offset = 0; $offset < $count; $offset += 10_000) {
+            $binary .= pack('s*', ...array_slice($values, $offset, 10_000));
         }
 
         return $binary;
