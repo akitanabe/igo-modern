@@ -14,5 +14,8 @@ enabled = false
 [linter.rules."kan-defect"]
 enabled = false
 
+[linter.rules."no-isset"]
+enabled = false
+
 [linter.rules."too-many-methods"]
 enabled = false
