@@ -17,5 +17,11 @@ enabled = false
 [linter.rules."no-isset"]
 enabled = false
 
+[linter.rules."no-boolean-flag-parameter"]
+enabled = false
+
+[linter.rules."single-class-per-file"]
+exclude = ["tests/"]
+
 [linter.rules."too-many-methods"]
 enabled = false
