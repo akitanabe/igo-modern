@@ -138,7 +138,7 @@ final class FileBinaryDictionaryLoader implements BinaryDictionaryLoader
         $stream = $this->streams->open($this->dataDir . '/word.ary.idx');
 
         try {
-            return $stream->getIntArrayInstance(intdiv($stream->size(), 4));
+            return $stream->getIntArrayInstance(intdiv($stream->size(), num2: 4));
         } finally {
             $stream->close();
         }
@@ -156,12 +156,12 @@ final class FileBinaryDictionaryLoader implements BinaryDictionaryLoader
         $stream = $this->streams->open($this->dataDir . '/char.category');
 
         try {
-            $data = $stream->getIntArray(intdiv($stream->size(), 4));
+            $data = $stream->getIntArray(intdiv($stream->size(), num2: 4));
         } finally {
             $stream->close();
         }
 
-        $size = intdiv(count($data), 4);
+        $size = intdiv(count($data), num2: 4);
         $categories = [];
 
         for ($i = 0; $i < $size; $i++) {

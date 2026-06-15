@@ -91,8 +91,8 @@ class CharCategoryBuilder implements DictionaryBuildStep
         $definitionLines = [];
 
         foreach ($lines as $index => $line) {
-            $commentStart = strpos($line, '#');
-            $withoutComment = $commentStart === false ? $line : substr($line, 0, $commentStart);
+            $commentStart = strpos($line, needle: '#');
+            $withoutComment = $commentStart === false ? $line : substr($line, offset: 0, length: $commentStart);
             $trimmed = trim($withoutComment);
 
             if ($trimmed === '') {
@@ -152,7 +152,7 @@ class CharCategoryBuilder implements DictionaryBuildStep
         }
 
         [$start, $end] = $this->parseCodeRange($fields[0], $lineNumber);
-        $names = array_slice($fields, 1);
+        $names = array_slice($fields, offset: 1);
 
         foreach ($names as $name) {
             if (!$this->isCategoryName($name)) {
@@ -195,7 +195,7 @@ class CharCategoryBuilder implements DictionaryBuildStep
             throw new RuntimeException(sprintf('char.def line %d has invalid UCS2 code.', $lineNumber));
         }
 
-        return (int) hexdec(substr($value, 2));
+        return (int) hexdec(substr($value, offset: 2));
     }
 
     /**
@@ -342,7 +342,7 @@ class CharCategoryBuilder implements DictionaryBuildStep
             return;
         }
 
-        if (!mkdir($directory, 0777, true) && !is_dir($directory)) {
+        if (!mkdir($directory, permissions: 0777, recursive: true) && !is_dir($directory)) {
             throw new RuntimeException(sprintf('failed to create output directory "%s".', $directory));
         }
     }
@@ -392,7 +392,7 @@ class CharCategoryBuilder implements DictionaryBuildStep
         $binary = '';
 
         for ($offset = 0; $offset < $count; $offset += 10_000) {
-            $binary .= pack('l*', ...array_slice($values, $offset, 10_000));
+            $binary .= pack('l*', ...array_slice($values, offset: $offset, length: 10_000));
         }
 
         return $binary;

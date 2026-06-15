@@ -86,7 +86,7 @@ final class FileInputStream implements InputStream, IntArrayReader, ShortArrayRe
         ?ByteReaderFactory $byteReaderFactory = null,
         ?int $chunkSize = null,
     ): self {
-        $file = fopen($fileName, 'rb');
+        $file = fopen($fileName, mode: 'rb');
 
         if ($file === false) {
             throw new RuntimeException('dictionary reading failed.');

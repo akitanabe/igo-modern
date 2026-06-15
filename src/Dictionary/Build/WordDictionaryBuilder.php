@@ -81,7 +81,7 @@ class WordDictionaryBuilder implements DictionaryBuildStep
 
             $entries[] = $this->entryFromFields(
                 "\002" . $fields[0],
-                array_slice($fields, 1),
+                array_slice($fields, offset: 1),
                 $delimiter,
                 'unk.def',
                 $line['number'],
@@ -113,7 +113,7 @@ class WordDictionaryBuilder implements DictionaryBuildStep
 
             $entries[] = $this->entryFromFields(
                 $fields[0],
-                array_slice($fields, 1),
+                array_slice($fields, offset: 1),
                 $delimiter,
                 basename($fileName),
                 $line['number'],
@@ -170,7 +170,7 @@ class WordDictionaryBuilder implements DictionaryBuildStep
             'leftId' => $leftId,
             'rightId' => $rightId,
             'cost' => $cost,
-            'feature' => implode($delimiter, array_slice($fields, 3)),
+            'feature' => implode($delimiter, array_slice($fields, offset: 3)),
         ];
     }
 
@@ -275,17 +275,17 @@ class WordDictionaryBuilder implements DictionaryBuildStep
             $indices[] = $wordId;
 
             foreach ($groupedEntries[$trieId] as $entry) {
-                $dataOffsets[] = intdiv(strlen($wordData), 2);
+                $dataOffsets[] = intdiv(strlen($wordData), num2: 2);
                 $leftIds[] = $entry['leftId'];
                 $rightIds[] = $entry['rightId'];
                 $costs[] = $entry['cost'];
-                $wordData .= mb_convert_encoding($entry['feature'], 'UTF-16LE', 'UTF-8');
+                $wordData .= mb_convert_encoding($entry['feature'], to_encoding: 'UTF-16LE', from_encoding: 'UTF-8');
                 $wordId++;
             }
         }
 
         $indices[] = $wordId;
-        $dataOffsets[] = intdiv(strlen($wordData), 2);
+        $dataOffsets[] = intdiv(strlen($wordData), num2: 2);
         $leftIds[] = 0;
         $rightIds[] = 0;
         $costs[] = 0;
@@ -355,7 +355,7 @@ class WordDictionaryBuilder implements DictionaryBuildStep
             return $line;
         }
 
-        $converted = mb_convert_encoding($line, 'UTF-8', $encoding);
+        $converted = mb_convert_encoding($line, to_encoding: 'UTF-8', from_encoding: $encoding);
 
         if ($converted === false) {
             throw new RuntimeException(sprintf('failed to convert input from "%s" to UTF-8.', $encoding));
@@ -432,7 +432,7 @@ class WordDictionaryBuilder implements DictionaryBuildStep
             return;
         }
 
-        if (!mkdir($directory, 0777, true) && !is_dir($directory)) {
+        if (!mkdir($directory, permissions: 0777, recursive: true) && !is_dir($directory)) {
             throw new RuntimeException(sprintf('failed to create output directory "%s".', $directory));
         }
     }
@@ -453,7 +453,7 @@ class WordDictionaryBuilder implements DictionaryBuildStep
         $binary = '';
 
         for ($offset = 0; $offset < $count; $offset += 10_000) {
-            $binary .= pack('l*', ...array_slice($values, $offset, 10_000));
+            $binary .= pack('l*', ...array_slice($values, offset: $offset, length: 10_000));
         }
 
         return $binary;
@@ -475,7 +475,7 @@ class WordDictionaryBuilder implements DictionaryBuildStep
         $binary = '';
 
         for ($offset = 0; $offset < $count; $offset += 10_000) {
-            $binary .= pack('s*', ...array_slice($values, $offset, 10_000));
+            $binary .= pack('s*', ...array_slice($values, offset: $offset, length: 10_000));
         }
 
         return $binary;

@@ -222,7 +222,7 @@ class ParseBenchmarkCommand extends Command
     {
         $storage = $this->stringOption($input, 'storage') ?? 'file';
 
-        if (!in_array($storage, ['file', 'memory'], true)) {
+        if (!in_array($storage, ['file', 'memory'], strict: true)) {
             throw new InvalidArgumentException('--storage must be file or memory.');
         }
 
@@ -296,38 +296,40 @@ class ParseBenchmarkCommand extends Command
     {
         $secondsPerIteration = $result->duration->mean / 1000;
 
-        return (
-            sprintf("Dictionary: %s\n", $result->config->dictionary)
-            . sprintf("Storage: %s\n", $result->config->storage)
-            . sprintf(
-                "Sample: %s (%d chars, %d morphemes)\n",
-                $result->config->sampleLabel(),
-                $result->characters,
-                $result->morphemes,
-            )
-            . sprintf(
-                "Input: %d bytes, %d lines%s\n",
-                $result->bytes,
-                $result->lines,
-                $result->config->file === null ? '' : sprintf(', file=%s', $result->config->file),
-            )
-            . sprintf("Iterations: %d measured, %d warmup\n", $result->config->iterations, $result->config->warmup)
-            . sprintf("Mean: %.3f ms\n", $result->duration->mean)
-            . sprintf("Median: %.3f ms\n", $result->duration->median)
-            . sprintf("p95: %.3f ms\n", $result->duration->p95)
-            . sprintf("Min/Max: %.3f / %.3f ms\n", $result->duration->min, $result->duration->max)
-            . sprintf(
-                "Throughput: %.1f chars/sec, %.1f lines/sec, %.1f morphemes/sec\n",
-                $result->characters / $secondsPerIteration,
-                $result->lines / $secondsPerIteration,
-                $result->morphemes / $secondsPerIteration,
-            )
-            . sprintf("Dictionary resident: %.2f MiB\n", $this->mebibytes($result->dictionaryResidentBytes))
-            . sprintf(
-                "Peak memory: %.2f MiB real / %.2f MiB allocated\n",
-                $this->mebibytes($result->peakMemoryRealBytes),
-                $this->mebibytes($result->peakMemoryBytes),
-            )
+        return sprintf(
+            "Dictionary: %s\n"
+            . "Storage: %s\n"
+            . "Sample: %s (%d chars, %d morphemes)\n"
+            . "Input: %d bytes, %d lines%s\n"
+            . "Iterations: %d measured, %d warmup\n"
+            . "Mean: %.3f ms\n"
+            . "Median: %.3f ms\n"
+            . "p95: %.3f ms\n"
+            . "Min/Max: %.3f / %.3f ms\n"
+            . "Throughput: %.1f chars/sec, %.1f lines/sec, %.1f morphemes/sec\n"
+            . "Dictionary resident: %.2f MiB\n"
+            . "Peak memory: %.2f MiB real / %.2f MiB allocated\n",
+            $result->config->dictionary,
+            $result->config->storage,
+            $result->config->sampleLabel(),
+            $result->characters,
+            $result->morphemes,
+            $result->bytes,
+            $result->lines,
+            $result->config->file === null ? '' : sprintf(', file=%s', $result->config->file),
+            $result->config->iterations,
+            $result->config->warmup,
+            $result->duration->mean,
+            $result->duration->median,
+            $result->duration->p95,
+            $result->duration->min,
+            $result->duration->max,
+            $result->characters / $secondsPerIteration,
+            $result->lines / $secondsPerIteration,
+            $result->morphemes / $secondsPerIteration,
+            $this->mebibytes($result->dictionaryResidentBytes),
+            $this->mebibytes($result->peakMemoryRealBytes),
+            $this->mebibytes($result->peakMemoryBytes),
         );
     }
 

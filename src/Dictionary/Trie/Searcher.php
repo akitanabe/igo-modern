@@ -66,6 +66,12 @@ class Searcher
     ) {
         // 探索ホットパスで参照する 5 配列がすべて常駐メモリのときだけ fast 経路用の生配列を取り出す。
         // 1 つでも Lazy なら fast は使えないため、すべて null のまま fallback（get() 経路）を維持する。
+        $this->rawBase = null;
+        $this->rawChck = null;
+        $this->rawBegs = null;
+        $this->rawLens = null;
+        $this->rawTail = null;
+
         if (
             $base instanceof RawIntValues
             && $chck instanceof RawIntValues
@@ -78,12 +84,6 @@ class Searcher
             $this->rawBegs = $begs->values();
             $this->rawLens = $lens->values();
             $this->rawTail = $tail->values();
-        } else {
-            $this->rawBase = null;
-            $this->rawChck = null;
-            $this->rawBegs = null;
-            $this->rawLens = null;
-            $this->rawTail = null;
         }
     }
 
@@ -100,7 +100,7 @@ class Searcher
      */
     public static function ID(int $id): int
     {
-        return ($id * -1) - 1;
+        return -$id - 1;
     }
 
     /**

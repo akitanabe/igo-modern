@@ -77,7 +77,7 @@ class ParseBenchmarkRunner
         return new ParseBenchmarkResult(
             $config,
             $text,
-            mb_strlen($text, 'UTF-8'),
+            mb_strlen($text, encoding: 'UTF-8'),
             strlen($text),
             $this->countLines($text),
             $measurement['morphemes'],
@@ -102,7 +102,7 @@ class ParseBenchmarkRunner
             throw new InvalidArgumentException('warmup must be a non-negative integer.');
         }
 
-        if (!in_array($config->storage, ['file', 'memory'], true)) {
+        if (!in_array($config->storage, ['file', 'memory'], strict: true)) {
             throw new InvalidArgumentException('storage must be file or memory.');
         }
 
@@ -232,6 +232,6 @@ class ParseBenchmarkRunner
      */
     private function countLines(string $text): int
     {
-        return substr_count($text, "\n") + ($text !== '' && substr($text, -1) !== "\n" ? 1 : 0);
+        return substr_count($text, needle: "\n") + ($text !== '' && substr($text, offset: -1) !== "\n" ? 1 : 0);
     }
 }

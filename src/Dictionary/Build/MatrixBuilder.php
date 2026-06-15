@@ -34,7 +34,7 @@ class MatrixBuilder implements DictionaryBuildStep
      */
     private function buildMatrixBinary(string $fileName): array
     {
-        $handle = fopen($fileName, 'r');
+        $handle = fopen($fileName, mode: 'r');
 
         if ($handle === false) {
             throw new RuntimeException(sprintf('failed to read matrix.def "%s".', $fileName));
@@ -120,7 +120,7 @@ class MatrixBuilder implements DictionaryBuildStep
                     // /^-?\d+$/ と同じ受理言語を strspn で無アロケーション判定する。"007" もここで受理してよい。
                     if (
                         ($costLen - $costStart) > 0
-                        && strspn($costStr, '0123456789', $costStart) === ($costLen - $costStart)
+                        && strspn($costStr, characters: '0123456789', offset: $costStart) === ($costLen - $costStart)
                     ) {
                         // 余剰行は順序検証より前に弾き、既存の entry count 不一致挙動を保つ。
                         if ($index >= $expectedEntryCount) {
@@ -141,7 +141,9 @@ class MatrixBuilder implements DictionaryBuildStep
                             // LE 環境では pack('s') を介さず下位/上位バイトを直接代入し、関数呼び出しを省く。
                             $costs[$offset] = chr($cost & 0xFF);
                             $costs[$offset + 1] = chr(($cost >> 8) & 0xFF);
-                        } else {
+                        }
+
+                        if (!$littleEndian) {
                             // LE 以外では native endian 出力を保つため従来どおり pack('s') の結果を代入する。
                             $short = pack('s', $cost);
                             $costs[$offset] = $short[0];
@@ -254,7 +256,9 @@ class MatrixBuilder implements DictionaryBuildStep
         if ($littleEndian) {
             $costs[$offset] = chr($cost & 0xFF);
             $costs[$offset + 1] = chr(($cost >> 8) & 0xFF);
-        } else {
+        }
+
+        if (!$littleEndian) {
             $short = pack('s', $cost);
             $costs[$offset] = $short[0];
             $costs[$offset + 1] = $short[1];
@@ -383,7 +387,7 @@ class MatrixBuilder implements DictionaryBuildStep
             return;
         }
 
-        if (!mkdir($directory, 0777, true) && !is_dir($directory)) {
+        if (!mkdir($directory, permissions: 0777, recursive: true) && !is_dir($directory)) {
             throw new RuntimeException(sprintf('failed to create output directory "%s".', $directory));
         }
     }
@@ -394,7 +398,7 @@ class MatrixBuilder implements DictionaryBuildStep
     private function writeBinaryFile(string $fileName, string $header, string $costs): void
     {
         $temporaryName = $fileName . '.tmp';
-        $handle = fopen($temporaryName, 'w');
+        $handle = fopen($temporaryName, mode: 'w');
 
         if ($handle === false) {
             throw new RuntimeException(sprintf('failed to write matrix.bin "%s".', $temporaryName));
