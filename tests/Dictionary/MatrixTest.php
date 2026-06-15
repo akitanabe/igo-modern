@@ -153,7 +153,7 @@ class MatrixTest extends TestCase
      */
     private function createDictionaryDirectory(int $leftSize, int $rightSize, array $costs): string
     {
-        $baseName = tempnam(sys_get_temp_dir(), 'igo-matrix-');
+        $baseName = tempnam(sys_get_temp_dir(), prefix: 'igo-matrix-');
         $this->assertIsString($baseName);
         unlink($baseName);
         mkdir($baseName);

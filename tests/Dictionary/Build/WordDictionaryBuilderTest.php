@@ -221,7 +221,7 @@ class WordDictionaryBuilderTest extends TestCase
      */
     public function testPackIntsByteOutputMatchesNaiveImplementationAcrossChunkBoundary(): void
     {
-        $values = range(0, 10_000);
+        $values = range(0, end: 10_000);
         $builder = new WordDictionaryBuilder();
         $method = (new ReflectionClass($builder))->getMethod('packInts');
         $method->setAccessible(true);
@@ -290,7 +290,7 @@ class WordDictionaryBuilderTest extends TestCase
      */
     public function testPackShortsByteOutputMatchesNaiveImplementationAcrossChunkBoundary(): void
     {
-        $values = array_map(static fn(int $i): int => $i % 32_768, range(0, 10_000));
+        $values = array_map(static fn(int $i): int => $i % 32_768, range(0, end: 10_000));
         $builder = new WordDictionaryBuilder();
         $method = (new ReflectionClass($builder))->getMethod('packShorts');
         $method->setAccessible(true);
@@ -362,7 +362,7 @@ class WordDictionaryBuilderTest extends TestCase
      */
     private function utf16CodeUnits(string $text): array
     {
-        $values = unpack('S*', mb_convert_encoding($text, 'UTF-16LE', 'UTF-8'));
+        $values = unpack('S*', mb_convert_encoding($text, to_encoding: 'UTF-16LE', from_encoding: 'UTF-8'));
         $this->assertIsArray($values);
 
         return array_values($values);
@@ -373,7 +373,7 @@ class WordDictionaryBuilderTest extends TestCase
      */
     private function featureBytes(string $feature): string
     {
-        return mb_convert_encoding($feature, 'UTF-16LE', 'UTF-8');
+        return mb_convert_encoding($feature, to_encoding: 'UTF-16LE', from_encoding: 'UTF-8');
     }
 }
 

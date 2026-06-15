@@ -115,7 +115,7 @@ class PagedByteReaderFactoryTest extends TestCase
      */
     private function createBinaryFile(string $contents): string
     {
-        $fileName = tempnam(sys_get_temp_dir(), 'igo-paged-');
+        $fileName = tempnam(sys_get_temp_dir(), prefix: 'igo-paged-');
         $this->assertIsString($fileName);
         $this->temporaryFiles[] = $fileName;
 

@@ -263,7 +263,7 @@ class ArrayTest extends TestCase
              */
             public function getIntArray(int $count): array
             {
-                return array_slice($this->values, 0, $count);
+                return array_slice($this->values, offset: 0, length: $count);
             }
         };
     }
@@ -292,7 +292,7 @@ class ArrayTest extends TestCase
              */
             public function getShortArray(int $count): array
             {
-                return array_slice($this->values, 0, $count);
+                return array_slice($this->values, offset: 0, length: $count);
             }
         };
     }
@@ -321,7 +321,7 @@ class ArrayTest extends TestCase
              */
             public function getCharArray(int $count): array
             {
-                return array_slice($this->values, 0, $count);
+                return array_slice($this->values, offset: 0, length: $count);
             }
         };
     }
@@ -331,7 +331,7 @@ class ArrayTest extends TestCase
      */
     private function createBinaryFile(string $contents): string
     {
-        $fileName = tempnam(sys_get_temp_dir(), 'igo-array-');
+        $fileName = tempnam(sys_get_temp_dir(), prefix: 'igo-array-');
         $this->assertIsString($fileName);
         $this->temporaryFiles[] = $fileName;
 

@@ -231,7 +231,9 @@ class DoubleArrayTrieBuilder
 
         if ($node->id === null) {
             $this->writeUint16($chck, $nodeBase * 2, 1);
-        } else {
+        }
+
+        if ($node->id !== null) {
             $this->writeInt32($base, $nodeBase * 4, -($node->id + 1));
             $this->writeUint16($chck, $nodeBase * 2, 0);
         }
@@ -245,7 +247,7 @@ class DoubleArrayTrieBuilder
                 $id = $compressed['id'];
                 $this->writeInt32($base, $index * 4, -($id + 1));
                 // begs は append 前の tail code unit 数（= strlen/2）を記録する。
-                $this->writeInt32($begs, $id * 4, intdiv(strlen($tail), 2));
+                $this->writeInt32($begs, $id * 4, intdiv(strlen($tail), num2: 2));
                 $this->writeInt16($lens, $id * 2, count($compressed['suffix']));
 
                 // suffix が空でなければ全 code unit を一括 pack して tail へ追記する。
@@ -369,9 +371,9 @@ class DoubleArrayTrieBuilder
      */
     private function dictionaryBinary(string $base, string $chck, string $begs, string $lens, string $tail): string
     {
-        $nodeSize = intdiv(strlen($base), 4);
-        $keySetSize = intdiv(strlen($begs), 4);
-        $tailSize = intdiv(strlen($tail), 2);
+        $nodeSize = intdiv(strlen($base), num2: 4);
+        $keySetSize = intdiv(strlen($begs), num2: 4);
+        $tailSize = intdiv(strlen($tail), num2: 2);
 
         return (
             pack('l', $nodeSize) . pack('l', $keySetSize) . pack('l', $tailSize) . $begs . $base . $lens . $chck . $tail
@@ -385,7 +387,7 @@ class DoubleArrayTrieBuilder
      */
     private function utf16CodeUnits(string $key): array
     {
-        $binary = mb_convert_encoding($key, 'UTF-16LE', 'UTF-8');
+        $binary = mb_convert_encoding($key, to_encoding: 'UTF-16LE', from_encoding: 'UTF-8');
         $values = unpack('S*', $binary);
 
         if ($values === false) {

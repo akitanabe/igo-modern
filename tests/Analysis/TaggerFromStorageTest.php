@@ -98,7 +98,7 @@ final class FakeWordDictionary implements WordDictionary
      */
     public function wordData(int $wordId): string
     {
-        return mb_convert_encoding('UNKNOWN', 'UTF-16LE', 'UTF-8');
+        return mb_convert_encoding('UNKNOWN', to_encoding: 'UTF-16LE', from_encoding: 'UTF-8');
     }
 }
 

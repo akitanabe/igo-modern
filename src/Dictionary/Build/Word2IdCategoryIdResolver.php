@@ -45,7 +45,7 @@ class Word2IdCategoryIdResolver implements CategoryIdResolver
      */
     private function utf16CodeUnits(string $key): array
     {
-        $binary = mb_convert_encoding($key, 'UTF-16LE', 'UTF-8');
+        $binary = mb_convert_encoding($key, to_encoding: 'UTF-16LE', from_encoding: 'UTF-8');
         $values = unpack('S*', $binary);
 
         if ($values === false) {

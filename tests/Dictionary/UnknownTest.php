@@ -163,7 +163,7 @@ class UnknownTest extends TestCase
      */
     private function createDictionaryDirectory(array $categories, array $charToCategoryIds, array $eqlMasks): string
     {
-        $baseName = tempnam(sys_get_temp_dir(), 'igo-unknown-');
+        $baseName = tempnam(sys_get_temp_dir(), prefix: 'igo-unknown-');
         $this->assertIsString($baseName);
         unlink($baseName);
         mkdir($baseName);
@@ -189,8 +189,8 @@ class UnknownTest extends TestCase
         array $eqlMasks,
     ): void {
         $maxCode = max(array_merge([32], array_keys($charToCategoryIds), array_keys($eqlMasks)));
-        $charToCategory = array_fill(0, $maxCode + 1, 0);
-        $masks = array_fill(0, $maxCode + 1, 0);
+        $charToCategory = array_fill(0, count: $maxCode + 1, value: 0);
+        $masks = array_fill(0, count: $maxCode + 1, value: 0);
 
         foreach ($charToCategoryIds as $code => $categoryIndex) {
             $charToCategory[$code] = $categoryIndex;

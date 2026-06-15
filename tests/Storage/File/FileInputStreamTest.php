@@ -252,7 +252,7 @@ class FileInputStreamTest extends TestCase
      */
     private function createBinaryFile(string $contents): string
     {
-        $fileName = tempnam(sys_get_temp_dir(), 'igo-fis-');
+        $fileName = tempnam(sys_get_temp_dir(), prefix: 'igo-fis-');
         $this->assertIsString($fileName);
         $this->temporaryFiles[] = $fileName;
 

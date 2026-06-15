@@ -217,9 +217,9 @@ class ParseCommandTest extends TestCase
      */
     public function testExecuteReadsTextFileWithDefaultOutputEncoding(): void
     {
-        $textFile = tempnam(sys_get_temp_dir(), 'igo-console-');
+        $textFile = tempnam(sys_get_temp_dir(), prefix: 'igo-console-');
         $this->assertIsString($textFile);
-        $this->assertSame(5, file_put_contents($textFile, 'hello'));
+        $this->assertSame(5, file_put_contents($textFile, data: 'hello'));
 
         $parser = new RecordingParser([
             new Morpheme('hello', 'feature', 0),

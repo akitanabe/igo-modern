@@ -34,7 +34,7 @@ final class PagedByteReaderFactory implements ByteReaderFactory
      */
     public function open(string $fileName): ByteReader
     {
-        $file = fopen($fileName, 'rb');
+        $file = fopen($fileName, mode: 'rb');
 
         if ($file === false) {
             throw new RuntimeException('dictionary reading failed.');

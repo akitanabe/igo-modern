@@ -216,7 +216,7 @@ class Tagger
     private function prepareInput(string $text): string
     {
         if ($this->fixedInputEncoding === null) {
-            $detectedEncoding = mb_detect_encoding($text, 'ASCII,JIS,UTF-8,EUC-JP,SJIS');
+            $detectedEncoding = mb_detect_encoding($text, encodings: 'ASCII,JIS,UTF-8,EUC-JP,SJIS');
             $this->inputEncoding = $detectedEncoding === false ? 'UTF-8' : $detectedEncoding;
         }
 

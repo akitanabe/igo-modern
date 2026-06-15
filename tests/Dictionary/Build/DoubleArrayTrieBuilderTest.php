@@ -176,7 +176,7 @@ class DoubleArrayTrieBuilderTest extends TestCase
      */
     private function createTemporaryFile(): string
     {
-        $fileName = tempnam(sys_get_temp_dir(), 'igo-word2id-');
+        $fileName = tempnam(sys_get_temp_dir(), prefix: 'igo-word2id-');
         $this->assertIsString($fileName);
         $this->temporaryFiles[] = $fileName;
 
@@ -258,7 +258,7 @@ class DoubleArrayTrieBuilderTest extends TestCase
      */
     public function testBuildCompressesVeryLongSinglePathKeyIntoTail(): void
     {
-        $longKey = str_repeat('a', 20_000);
+        $longKey = str_repeat('a', times: 20_000);
         $fileName = $this->createTemporaryFile();
         (new DoubleArrayTrieBuilder())->build([
             $longKey => 0,
@@ -359,7 +359,7 @@ class DoubleArrayTrieBuilderTest extends TestCase
      */
     private function utf16CodeUnits(string $key): array
     {
-        $values = unpack('S*', mb_convert_encoding($key, 'UTF-16LE', 'UTF-8'));
+        $values = unpack('S*', mb_convert_encoding($key, to_encoding: 'UTF-16LE', from_encoding: 'UTF-8'));
         $this->assertIsArray($values);
 
         return array_values($values);

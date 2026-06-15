@@ -71,6 +71,11 @@ class BinaryWordDictionary implements WordDictionary
     ) {
         // ホットパスの 4 配列がすべて常駐メモリのときだけ fast 版に必要な生配列を取り出す。
         // 1 つでも Lazy なら fast 版は使えないため、すべて null のまま fallback 経路を維持する。
+        $this->rawIndices = null;
+        $this->rawCosts = null;
+        $this->rawLeftIds = null;
+        $this->rawRightIds = null;
+
         if (
             $indices instanceof RawIntValues
             && $costs instanceof RawIntValues
@@ -81,11 +86,6 @@ class BinaryWordDictionary implements WordDictionary
             $this->rawCosts = $costs->values();
             $this->rawLeftIds = $leftIds->values();
             $this->rawRightIds = $rightIds->values();
-        } else {
-            $this->rawIndices = null;
-            $this->rawCosts = null;
-            $this->rawLeftIds = null;
-            $this->rawRightIds = null;
         }
 
         // 再利用する caller を 1 つだけ生成しておき、以後は setCallback で $fn を差し替える。

@@ -163,7 +163,7 @@ class WordDicTest extends TestCase
      */
     private function createDictionaryDirectory(): string
     {
-        $baseName = tempnam(sys_get_temp_dir(), 'igo-worddic-');
+        $baseName = tempnam(sys_get_temp_dir(), prefix: 'igo-worddic-');
         $this->assertIsString($baseName);
         unlink($baseName);
         mkdir($baseName);
@@ -189,9 +189,9 @@ class WordDicTest extends TestCase
         $keySetSize = 2;
         $tailSize = 1;
         $begs = [0, 0];
-        $base = array_fill(0, $nodeSize, 0);
+        $base = array_fill(0, count: $nodeSize, value: 0);
         $lens = [0, 1];
-        $chck = array_fill(0, $nodeSize, 0);
+        $chck = array_fill(0, count: $nodeSize, value: 0);
         $tail = [30];
 
         $base[0] = 1;

@@ -170,7 +170,7 @@ class DictionaryBuilderIntegrationTest extends TestCase
      */
     private function utf16CodeUnits(string $text): array
     {
-        $values = unpack('S*', mb_convert_encoding($text, 'UTF-16LE', 'UTF-8'));
+        $values = unpack('S*', mb_convert_encoding($text, to_encoding: 'UTF-16LE', from_encoding: 'UTF-8'));
         $this->assertIsArray($values);
 
         return array_values($values);
