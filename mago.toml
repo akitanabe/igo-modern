@@ -14,6 +14,9 @@ enabled = false
 [linter.rules."kan-defect"]
 enabled = false
 
+[linter.rules."halstead"]
+enabled = false
+
 [linter.rules."no-isset"]
 enabled = false
 
