@@ -273,7 +273,7 @@ class CharCategoryBuilderTest extends TestCase
      */
     public function testPackIntsByteOutputMatchesNaiveImplementationAcrossChunkBoundary(): void
     {
-        $values = range(0, 10_000);
+        $values = range(0, end: 10_000);
         $builder = new CharCategoryBuilder(new MappingCategoryIdResolver([]));
         $method = (new ReflectionClass($builder))->getMethod('packInts');
         $method->setAccessible(true);

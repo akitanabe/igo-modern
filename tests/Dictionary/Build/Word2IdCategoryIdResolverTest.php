@@ -81,7 +81,7 @@ class Word2IdCategoryIdResolverTest extends TestCase
      */
     private function createDictionaryDirectory(array $keys): string
     {
-        $baseName = tempnam(sys_get_temp_dir(), 'igo-category-id-');
+        $baseName = tempnam(sys_get_temp_dir(), prefix: 'igo-category-id-');
         $this->assertIsString($baseName);
         unlink($baseName);
         mkdir($baseName);

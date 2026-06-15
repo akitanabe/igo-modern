@@ -96,7 +96,7 @@ class WordDataReaderTest extends TestCase
      */
     private function createWordDataFile(string $contents): string
     {
-        $fileName = tempnam(sys_get_temp_dir(), 'igo-worddat-');
+        $fileName = tempnam(sys_get_temp_dir(), prefix: 'igo-worddat-');
         $this->assertIsString($fileName);
         $this->temporaryFiles[] = $fileName;
 

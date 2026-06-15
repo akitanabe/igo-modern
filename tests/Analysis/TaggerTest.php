@@ -79,8 +79,11 @@ class TaggerTest extends TestCase
 
         $this->assertCount(2, $result);
         $this->assertSame('seed', $result[0]->surface);
-        $this->assertSame(mb_convert_encoding('A', 'SJIS', 'UTF-8'), $result[1]->surface);
-        $this->assertSame(mb_convert_encoding('ALPHA', 'SJIS', 'UTF-8'), $result[1]->feature);
+        $this->assertSame(mb_convert_encoding('A', to_encoding: 'SJIS', from_encoding: 'UTF-8'), $result[1]->surface);
+        $this->assertSame(
+            mb_convert_encoding('ALPHA', to_encoding: 'SJIS', from_encoding: 'UTF-8'),
+            $result[1]->feature,
+        );
         $this->assertSame(0, $result[1]->start);
     }
 
@@ -122,7 +125,7 @@ class TaggerTest extends TestCase
         $directory = $this->createDictionaryDirectory(2);
         $tagger = Tagger::fromStorage(FileStorage::fromDataDir($directory), 'UTF-8', 'EUC-JP');
 
-        $eucJpText = mb_convert_encoding('AB', 'EUC-JP', 'UTF-8');
+        $eucJpText = mb_convert_encoding('AB', to_encoding: 'EUC-JP', from_encoding: 'UTF-8');
         $result = $tagger->parse($eucJpText);
 
         $this->assertCount(1, $result);
@@ -138,7 +141,7 @@ class TaggerTest extends TestCase
         $directory = $this->createDictionaryDirectory(2);
         $tagger = Tagger::fromStorage(FileStorage::fromDataDir($directory), 'UTF-8', 'SJIS');
 
-        $sjisText = mb_convert_encoding('AB', 'SJIS', 'UTF-8');
+        $sjisText = mb_convert_encoding('AB', to_encoding: 'SJIS', from_encoding: 'UTF-8');
         $result = $tagger->parse($sjisText);
 
         $this->assertCount(1, $result);
@@ -234,7 +237,7 @@ class TaggerTest extends TestCase
      */
     private function createMatrixOnlyDirectory(int $leftSize, int $rightSize, array $costs): string
     {
-        $baseName = tempnam(sys_get_temp_dir(), 'igo-tagger-');
+        $baseName = tempnam(sys_get_temp_dir(), prefix: 'igo-tagger-');
         $this->assertIsString($baseName);
         unlink($baseName);
         mkdir($baseName);
@@ -253,7 +256,7 @@ class TaggerTest extends TestCase
      */
     private function createDictionaryDirectory(int $alphaLength): string
     {
-        $baseName = tempnam(sys_get_temp_dir(), 'igo-tagger-');
+        $baseName = tempnam(sys_get_temp_dir(), prefix: 'igo-tagger-');
         $this->assertIsString($baseName);
         unlink($baseName);
         mkdir($baseName);
@@ -272,8 +275,8 @@ class TaggerTest extends TestCase
     private function writeCategoryFiles(string $directory, int $alphaLength): void
     {
         $maxCode = 66;
-        $charToCategory = array_fill(0, $maxCode + 1, 0);
-        $eqlMasks = array_fill(0, $maxCode + 1, 0);
+        $charToCategory = array_fill(0, count: $maxCode + 1, value: 0);
+        $eqlMasks = array_fill(0, count: $maxCode + 1, value: 0);
         $charToCategory[65] = 1;
         $charToCategory[66] = 1;
         $eqlMasks[32] = 0b0001;
@@ -304,8 +307,8 @@ class TaggerTest extends TestCase
     private function writeWordDicFiles(string $directory): void
     {
         $features = [
-            mb_convert_encoding('SPACE', 'UTF-16LE', 'UTF-8'),
-            mb_convert_encoding('ALPHA', 'UTF-16LE', 'UTF-8'),
+            mb_convert_encoding('SPACE', to_encoding: 'UTF-16LE', from_encoding: 'UTF-8'),
+            mb_convert_encoding('ALPHA', to_encoding: 'UTF-16LE', from_encoding: 'UTF-8'),
         ];
         $wordData = implode('', $features);
 
@@ -336,8 +339,8 @@ class TaggerTest extends TestCase
     private function createEmptyTrieDictionary(): string
     {
         $nodeSize = 128;
-        $base = array_fill(0, $nodeSize, 0);
-        $chck = array_fill(0, $nodeSize, 0);
+        $base = array_fill(0, count: $nodeSize, value: 0);
+        $chck = array_fill(0, count: $nodeSize, value: 0);
         $base[0] = 1;
         $chck[1] = 999;
 

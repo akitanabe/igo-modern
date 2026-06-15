@@ -76,7 +76,7 @@ class CharCategoryTest extends TestCase
     private function intArray(array $values): IntArray
     {
         $size = max(array_keys($values)) + 1;
-        $dense = array_fill(0, $size, 0);
+        $dense = array_fill(0, count: $size, value: 0);
 
         foreach ($values as $code => $value) {
             $dense[$code] = $value;

@@ -84,9 +84,7 @@ class BuildDicCommandTest extends TestCase
     public function testExecuteDelegatesArgumentsToBuilder(): void
     {
         $calls = new DictionaryBuilderCallLog();
-        $command = new BuildDicCommand(static function () use ($calls): DictionaryBuilder {
-            return new RecordingDictionaryBuilder($calls);
-        });
+        $command = new BuildDicCommand(static fn(): DictionaryBuilder => new RecordingDictionaryBuilder($calls));
 
         $tester = new CommandTester($command);
         $statusCode = $tester->execute([
@@ -112,9 +110,7 @@ class BuildDicCommandTest extends TestCase
     public function testExecuteUsesCommaAsDefaultDelimiter(): void
     {
         $calls = new DictionaryBuilderCallLog();
-        $command = new BuildDicCommand(static function () use ($calls): DictionaryBuilder {
-            return new RecordingDictionaryBuilder($calls);
-        });
+        $command = new BuildDicCommand(static fn(): DictionaryBuilder => new RecordingDictionaryBuilder($calls));
 
         $tester = new CommandTester($command);
         $statusCode = $tester->execute([
@@ -133,9 +129,7 @@ class BuildDicCommandTest extends TestCase
     public function testExecuteFailsWhenDelimiterHasMultipleCharacters(): void
     {
         $calls = new DictionaryBuilderCallLog();
-        $command = new BuildDicCommand(static function () use ($calls): DictionaryBuilder {
-            return new RecordingDictionaryBuilder($calls);
-        });
+        $command = new BuildDicCommand(static fn(): DictionaryBuilder => new RecordingDictionaryBuilder($calls));
 
         $tester = new CommandTester($command);
 
@@ -156,9 +150,7 @@ class BuildDicCommandTest extends TestCase
     public function testExecuteFailsWhenRequiredOptionIsMissing(): void
     {
         $calls = new DictionaryBuilderCallLog();
-        $command = new BuildDicCommand(static function () use ($calls): DictionaryBuilder {
-            return new RecordingDictionaryBuilder($calls);
-        });
+        $command = new BuildDicCommand(static fn(): DictionaryBuilder => new RecordingDictionaryBuilder($calls));
 
         $tester = new CommandTester($command);
 

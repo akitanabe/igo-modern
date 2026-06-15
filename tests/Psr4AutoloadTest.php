@@ -34,8 +34,8 @@ class Psr4AutoloadTest extends TestCase
     {
         $code = sprintf(
             'require %s; exit(class_exists(%s) ? 0 : 1);',
-            var_export(dirname(__DIR__) . '/vendor/autoload.php', true),
-            var_export($className, true),
+            var_export(dirname(__DIR__) . '/vendor/autoload.php', return: true),
+            var_export($className, return: true),
         );
 
         $process = proc_open(

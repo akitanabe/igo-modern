@@ -389,7 +389,7 @@ class MatrixBuilderTest extends TestCase
         // left-major 順に left/right を連続させた定義を組み立て、4MiB を十分に超えるサイズにする。
         $leftSize = 600;
         $rightSize = 600;
-        $handle = fopen($inputDirectory . '/matrix.def', 'w');
+        $handle = fopen($inputDirectory . '/matrix.def', mode: 'w');
         $this->assertIsResource($handle);
         fwrite($handle, $leftSize . ' ' . $rightSize . "\n");
 
@@ -412,7 +412,7 @@ class MatrixBuilderTest extends TestCase
         (new MatrixBuilder())->build($outputDirectory, $inputDirectory, 'UTF-8', ',');
 
         $binary = (string) file_get_contents($outputDirectory . '/matrix.bin');
-        $header = (array) unpack('lleft/lright', substr($binary, 0, 8));
+        $header = (array) unpack('lleft/lright', substr($binary, offset: 0, length: 8));
         $this->assertSame($leftSize, $header['left']);
         $this->assertSame($rightSize, $header['right']);
 
@@ -421,7 +421,7 @@ class MatrixBuilderTest extends TestCase
             $expectedCost = ((($left * $rightSize) + $right) % 65_536) - 32_768;
             $offset = 8 + ((($right * $leftSize) + $left) * 2);
             /** @var array<int, int> $unpacked */
-            $unpacked = (array) unpack('s', substr($binary, $offset, 2));
+            $unpacked = (array) unpack('s', substr($binary, offset: $offset, length: 2));
             $this->assertSame($expectedCost, $unpacked[1], sprintf('cost mismatch at (%d,%d)', $left, $right));
         }
     }

@@ -78,7 +78,7 @@ class PagedBinaryReaderTest extends TestCase
      */
     public function testConstructorRejectsNonPositivePageSize(): void
     {
-        $file = fopen($this->createBinaryFile('abc'), 'rb');
+        $file = fopen($this->createBinaryFile('abc'), mode: 'rb');
         $this->assertIsResource($file);
 
         $this->expectException(RuntimeException::class);
@@ -240,7 +240,7 @@ class PagedBinaryReaderTest extends TestCase
         int $pageSize = 4,
         int $maxCachedPages = PagedBinaryReader::DEFAULT_MAX_CACHED_PAGES,
     ): PagedBinaryReader {
-        $file = fopen($this->createBinaryFile($contents), 'rb');
+        $file = fopen($this->createBinaryFile($contents), mode: 'rb');
         $this->assertIsResource($file);
 
         return new PagedBinaryReader($file, $pageSize, $maxCachedPages);
@@ -251,7 +251,7 @@ class PagedBinaryReaderTest extends TestCase
      */
     private function createBinaryFile(string $contents): string
     {
-        $fileName = tempnam(sys_get_temp_dir(), 'igo-paged-');
+        $fileName = tempnam(sys_get_temp_dir(), prefix: 'igo-paged-');
         $this->assertIsString($fileName);
         $this->temporaryFiles[] = $fileName;
 
